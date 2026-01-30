@@ -1,0 +1,5 @@
+{
+  "name": "ADMIN",
+  "description": "A comprehensive Human Resource Management System admin portal featuring employee management, attendance monitoring, payroll processing, and performance tracking.",
+  "requestFramePermissions": []
+}

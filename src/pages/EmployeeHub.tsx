@@ -1,0 +1,449 @@
+import React, { useState, useMemo } from 'react';
+import * as LucideIcons from 'lucide-react';
+import { useHRMS } from '../context/HRMSContext';
+import { EmployeeSummary } from '../types';
+import { DEPARTMENTS, LOCATIONS } from '../constants';
+ 
+const Icon = ({ name, className }: { name: string; className?: string }) => {
+  const LucideIcon = (LucideIcons as any)[name];
+  return LucideIcon ? <LucideIcon className={className} /> : null;
+};
+ 
+const Modal = ({ isOpen, onClose, title, children }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
+      <div className="bg-white rounded-[32px] w-full max-w-xl relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+        <div className="p-8 border-b flex items-center justify-between bg-white sticky top-0">
+          <h2 className="text-2xl font-black text-slate-900">{title}</h2>
+          <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
+            <Icon name="X" className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar">{children}</div>
+      </div>
+    </div>
+  );
+};
+ 
+const EmployeeHub: React.FC = () => {
+  const { employees, addEmployee, deleteEmployee, updateEmployee } = useHRMS();
+  const [view, setView] = useState<'table' | 'grid'>('table');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [isAddModalOpen, setAddModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSummary | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeSummary | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+ 
+  const [newEmp, setNewEmp] = useState({
+    fullName: '',
+    designation: '',
+    department: DEPARTMENTS[0],
+    email: '',
+    location: LOCATIONS[0],
+    password: ''
+  });
+ 
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      const matchesSearch = emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesDept = deptFilter === 'All' || emp.department === deptFilter;
+      return matchesSearch && matchesDept;
+    });
+  }, [employees, searchTerm, deptFilter]);
+ 
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addEmployee(newEmp);
+    setAddModalOpen(false);
+    setNewEmp({ fullName: '', designation: '', department: DEPARTMENTS[0], email: '', location: LOCATIONS[0], password: '' });
+  };
+ 
+  const generatePassword = () => {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let retVal = "";
+    for (let i = 0, n = charset.length; i < 12; ++i) {
+      retVal += charset.charAt(Math.floor(Math.random() * n));
+    }
+    setNewEmp({ ...newEmp, password: retVal });
+  };
+ 
+  const confirmDelete = () => {
+    if (employeeToDelete) {
+      deleteEmployee(employeeToDelete.id);
+      setEmployeeToDelete(null);
+    }
+  };
+ 
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Staffing Repository</h1>
+          <p className="text-slate-500 text-sm font-medium">Record keeping for {employees.length} verified personnel.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 font-black text-xs uppercase tracking-widest shadow-sm transition-all">
+            <Icon name="Share2" className="w-4 h-4" /> Export
+          </button>
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 transition-all active:scale-95"
+          >
+            <Icon name="Plus" className="w-5 h-5" /> Enroll Staff
+          </button>
+        </div>
+      </div>
+ 
+      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
+        <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+          <div className="flex items-center bg-slate-50 rounded-2xl p-1.5 border border-slate-100">
+            <button
+              onClick={() => setView('table')}
+              className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest ${view === 'table' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+              <Icon name="List" className="w-4 h-4" /> Table
+            </button>
+            <button
+              onClick={() => setView('grid')}
+              className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest ${view === 'grid' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+              <Icon name="LayoutGrid" className="w-4 h-4" /> Cards
+            </button>
+          </div>
+          <div className="flex flex-1 items-center gap-4 w-full max-w-3xl">
+            <div className="relative flex-1 group">
+              <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Lookup by name, ID, or keyword..."
+                className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-600"
+              />
+            </div>
+            <select
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              className="px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest text-slate-500"
+            >
+              <option value="All">All Clusters</option>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+        </div>
+ 
+        {view === 'table' ? (
+          <div className="overflow-x-auto rounded-3xl border border-slate-50">
+            <table className="w-full">
+              <thead className="bg-slate-50/50">
+                <tr className="border-b border-slate-100">
+                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Employee Profile</th>
+                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">System Status</th>
+                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Leave Balance</th>
+                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
+                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Onboard Date</th>
+                  <th className="text-right py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredEmployees.map((emp) => (
+                  <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }}>
+                    <td className="py-6 px-8">
+                      <div className="flex items-center gap-4">
+                        <img src={emp.avatar} className="w-12 h-12 rounded-2xl border-4 border-white shadow-sm transition-transform group-hover:scale-110" alt="" />
+                        <div>
+                          <p className="font-black text-slate-800 leading-none mb-1.5">{emp.fullName}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{emp.employeeId} • {emp.designation}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-6 px-8">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                        emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                      }`}>
+                        {emp.status}
+                      </span>
+                    </td>
+                    <td className="py-6 px-8">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-black ${emp.leaveBalance < 5 ? 'text-rose-600' : 'text-slate-700'}`}>{emp.leaveBalance}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Days</span>
+                      </div>
+                    </td>
+                    <td className="py-6 px-8">
+                       <span className="text-xs font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg uppercase tracking-widest">{emp.department}</span>
+                    </td>
+                    <td className="py-6 px-8 text-xs font-bold text-slate-400 uppercase tracking-widest">{emp.dateOfJoining}</td>
+                    <td className="py-6 px-8 text-right">
+                      <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-indigo-100">
+                          <Icon name="Eye" className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setEmployeeToDelete(emp)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-rose-100">
+                          <Icon name="Trash2" className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {filteredEmployees.map((emp) => (
+              <div
+                key={emp.id}
+                onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }}
+                className="bg-white border border-slate-100 rounded-[32px] p-6 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all group relative cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-6">
+                   <div className="relative">
+                      <img src={emp.avatar} className="w-16 h-16 rounded-[20px] object-cover border-4 border-slate-50 shadow-md group-hover:scale-105 transition-transform" alt="" />
+                      <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm ${emp.leaveBalance < 5 ? 'bg-rose-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
+                        {emp.leaveBalance}d Bal
+                      </div>
+                   </div>
+                   <button
+                     onClick={(e) => { e.stopPropagation(); setEmployeeToDelete(emp); }}
+                     className="p-2.5 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 rounded-xl"
+                   >
+                     <Icon name="Trash2" className="w-4 h-4" />
+                   </button>
+                </div>
+                <div className="mb-6">
+                   <h3 className="font-black text-slate-900 leading-tight text-lg mb-1">{emp.fullName}</h3>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.employeeId}</p>
+                </div>
+                <div className="space-y-3">
+                   <div className="bg-slate-50 rounded-2xl p-4">
+                     <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Assignment</p>
+                     <p className="text-sm font-black text-slate-700 leading-none">{emp.designation}</p>
+                   </div>
+                   <div className="flex items-center justify-between px-2">
+                      <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{emp.department}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">{emp.location}</span>
+                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+ 
+      {/* Employee Detail Slide-over/Modal */}
+      <Modal isOpen={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} title="Personnel Profile">
+        {selectedEmployee && (
+          <div className="space-y-8">
+             <div className="flex flex-col items-center text-center">
+                <img src={selectedEmployee.avatar} className="w-24 h-24 rounded-3xl border-8 border-slate-50 shadow-xl mb-4" alt="" />
+                <h3 className="text-2xl font-black text-slate-900">{selectedEmployee.fullName}</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedEmployee.employeeId} • {selectedEmployee.designation}</p>
+                <div className="mt-4 flex gap-2">
+                   <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">{selectedEmployee.department}</span>
+                   <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">{selectedEmployee.status}</span>
+                </div>
+             </div>
+ 
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Work Contact</p>
+                   <p className="text-sm font-bold text-slate-700 truncate">{selectedEmployee.email}</p>
+                   <p className="text-[10px] font-bold text-slate-400 mt-1">{selectedEmployee.phone || 'No direct line'}</p>
+                </div>
+                <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Primary Location</p>
+                   <p className="text-sm font-bold text-slate-700">{selectedEmployee.location}</p>
+                   <p className="text-[10px] font-bold text-slate-400 mt-1">Onboarded: {selectedEmployee.dateOfJoining}</p>
+                </div>
+             </div>
+ 
+             <div className="bg-indigo-600 p-6 rounded-[32px] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
+                <div className="absolute right-0 bottom-0 opacity-10 group-hover:scale-110 transition-transform">
+                   <Icon name="ShieldCheck" className="w-32 h-32" />
+                </div>
+                <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70">Employee Access Credentials</h4>
+                <div className="space-y-4">
+                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div>
+                         <p className="text-[9px] font-bold uppercase opacity-50">Username / Email</p>
+                         <p className="text-sm font-black tracking-tight">{selectedEmployee.email}</p>
+                      </div>
+                      <button className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Icon name="Copy" className="w-4 h-4" /></button>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <div>
+                         <p className="text-[9px] font-bold uppercase opacity-50">System Password</p>
+                         <div className="flex items-center gap-2">
+                            <p className="text-sm font-black tracking-widest">
+                               {showPassword ? selectedEmployee.password : '••••••••••••'}
+                            </p>
+                         </div>
+                      </div>
+                      <button
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                         <Icon name={showPassword ? "EyeOff" : "Eye"} className="w-4 h-4" />
+                      </button>
+                   </div>
+                </div>
+             </div>
+ 
+             <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave Bal</p>
+                    <p className="text-2xl font-black text-slate-800">{selectedEmployee.leaveBalance} <span className="text-xs font-bold text-slate-400">days</span></p>
+                </div>
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Supervisor</p>
+                    <p className="text-sm font-black text-slate-800 truncate">{selectedEmployee.reportingManager}</p>
+                </div>
+             </div>
+ 
+             <div className="pt-4 flex gap-4">
+                <button
+                  onClick={() => {
+                    const nextStatus = selectedEmployee.status === 'active' ? 'inactive' : 'active';
+                    updateEmployee(selectedEmployee.id, { status: nextStatus as any });
+                    setSelectedEmployee(prev => prev ? {...prev, status: nextStatus as any} : null);
+                  }}
+                  className="flex-1 py-4 bg-white border-2 border-slate-100 text-slate-700 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+                >
+                  Change Status
+                </button>
+                <button
+                  onClick={() => { setEmployeeToDelete(selectedEmployee); setSelectedEmployee(null); }}
+                  className="flex-1 py-4 bg-rose-50 text-rose-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-100 transition-all"
+                >
+                  Terminate
+                </button>
+             </div>
+          </div>
+        )}
+      </Modal>
+ 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!employeeToDelete}
+        onClose={() => setEmployeeToDelete(null)}
+        title="Confirm Termination"
+      >
+        {employeeToDelete && (
+          <div className="space-y-6">
+            <div className="p-6 bg-rose-50 rounded-[28px] border border-rose-100 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-rose-600 shadow-sm mb-4 border border-rose-100">
+                <Icon name="AlertTriangle" className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 leading-tight">Proceed with de-enrollment?</h3>
+              <p className="text-sm text-slate-500 font-medium mt-2">
+                You are about to terminate the profile of <span className="text-slate-900 font-black">{employeeToDelete.fullName}</span> ({employeeToDelete.employeeId}). This action is permanent.
+              </p>
+            </div>
+           
+            <div className="flex gap-4">
+              <button
+                onClick={() => setEmployeeToDelete(null)}
+                className="flex-1 py-4 bg-white border-2 border-slate-100 text-slate-400 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+              >
+                Keep Record
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 py-4 bg-rose-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Icon name="Trash2" className="w-4 h-4" />
+                Confirm Termination
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+ 
+      {/* Add Employee Form */}
+      <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="New Staff Enrollment">
+        <form onSubmit={handleAddSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+              <input
+                required
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
+                placeholder="John Doe"
+                value={newEmp.fullName}
+                onChange={e => setNewEmp({...newEmp, fullName: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Domain</label>
+              <input
+                required
+                type="email"
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
+                placeholder="john.doe@company.com"
+                value={newEmp.email}
+                onChange={e => setNewEmp({...newEmp, email: e.target.value})}
+              />
+            </div>
+          </div>
+         
+          {/* Login Credentials Section */}
+          <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 space-y-4">
+             <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Initial Access Configuration</h4>
+             <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">System Password</label>
+                <div className="relative">
+                   <input
+                     required
+                     className="w-full pl-6 pr-24 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm tracking-widest text-slate-700"
+                     value={newEmp.password}
+                     onChange={e => setNewEmp({...newEmp, password: e.target.value})}
+                     placeholder="••••••••"
+                   />
+                   <button
+                     type="button"
+                     onClick={generatePassword}
+                     className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:bg-indigo-100 transition-colors"
+                   >
+                     Auto-Generate
+                   </button>
+                </div>
+                <p className="text-[10px] text-slate-400 italic px-1">Note: Provide these credentials to the employee for their first login.</p>
+             </div>
+          </div>
+ 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Cluster</label>
+              <select
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-[10px] uppercase tracking-widest text-slate-500"
+                value={newEmp.department}
+                onChange={e => setNewEmp({...newEmp, department: e.target.value})}
+              >
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Designation</label>
+              <input
+                required
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
+                value={newEmp.designation}
+                onChange={e => setNewEmp({...newEmp, designation: e.target.value})}
+              />
+            </div>
+          </div>
+          <div className="pt-6 border-t border-slate-100 flex gap-4">
+             <button type="button" onClick={() => setAddModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Abort</button>
+             <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Commit Enrollment</button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+ 
+export default EmployeeHub;
+
