@@ -27,4 +27,12 @@ export const PublicRoute = ({ children }: { children?: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+export const AdminRoute = ({ children }: { children?: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  // Redirect non-admins to dashboard
+  if (!user || user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
 export default ProtectedRoute;

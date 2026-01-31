@@ -245,10 +245,16 @@ export interface AuditLog {
   id: string;
   timestamp: string;
   user: string;
-  action: string;
-  module: string;
-  details: string;
-  ipAddress: string;
+  // optional fields — not all backends populate the same keys
+  action?: string;
+  module?: string;
+  entity?: string;
+  // commonly used for filtering/summaries
+  level?: string;
+  message?: string;
+  // details can be string or structured data
+  details?: any;
+  ipAddress?: string;
 }
 
 export interface Notification {

@@ -29,6 +29,7 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import TailwindTest from './pages/TailwindTest';
+import AuditLogsPage from './pages/AuditLogs';
 
 import { NAV_ITEMS } from './constants';
 
@@ -66,6 +67,7 @@ const App: React.FC = () => {
             <Route path="/payslips" element={<ProtectedRoute><LayoutWrapper><PayslipsAdmin /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/performance" element={<ProtectedRoute><LayoutWrapper><PerformanceManagement /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/system" element={<ProtectedRoute><LayoutWrapper><SystemAdmin /></LayoutWrapper></ProtectedRoute>} />
+            <Route path="/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><LayoutWrapper><Profile /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/tailwind-test" element={<ProtectedRoute><LayoutWrapper><TailwindTest /></LayoutWrapper></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
