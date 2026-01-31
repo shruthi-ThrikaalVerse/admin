@@ -1,0 +1,510 @@
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import * as LucideIcons from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import LayoutWrapper from '../components/LayoutWrapper';
+import { fetchAuditLogs, exportAuditLogs, AuditQuery } from '../api/audit';
+import { AuditLog } from '../types';
+import { AdminRoute } from '../components/RouteGuards';
+
+const LEVELS = ['ALL', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'LOGIN', 'SECURITY', 'CREATE', 'UPDATE', 'DELETE'];
+
+const formatLocal = (iso?: string) => {
+    if (!iso) return '-';
+    try {
+        const d = new Date(iso);
+        return d.toLocaleString();
+    } catch (e) {
+        return iso;
+    }
+};
+
+const maskSensitive = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return obj;
+    const clone: any = Array.isArray(obj) ? [] : {};
+    Object.keys(obj).forEach((k) => {
+        const v = obj[k];
+        if (/pass(word)?|secret|api(key)?|token|ssn/i.test(k)) {
+            clone[k] = '***';
+        } else if (typeof v === 'object') clone[k] = maskSensitive(v);
+        else clone[k] = v;
+    });
+    return clone;
+};
+
+const AuditLogsPage: React.FC = () => {
+    const { user } = useAuth();
+    const [logs, setLogs] = useState<AuditLog[]>([]);
+    const [total, setTotal] = useState(0);
+
+    const [page, setPage] = useState(1);
+    const [limit] = useState(50);
+    const [search, setSearch] = useState('');
+    const [level, setLevel] = useState('ALL');
+    const [startDate, setStartDate] = useState<string | undefined>(undefined);
+    const [endDate, setEndDate] = useState<string | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(false);
+    const [sort, setSort] = useState('timestamp');
+    const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+    const [liveTail, setLiveTail] = useState(false);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [usingMock, setUsingMock] = useState(false);
+    const tailRef = useRef<number | null>(null);
+
+    const presets = {
+        today: () => {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            setStartDate(d.toISOString());
+            setEndDate(new Date().toISOString());
+        },
+        last24h: () => {
+            const end = new Date();
+            const start = new Date(end.getTime() - 24 * 3600 * 1000);
+            setStartDate(start.toISOString());
+            setEndDate(end.toISOString());
+        },
+        last7d: () => {
+            const end = new Date();
+            const start = new Date(end.getTime() - 7 * 24 * 3600 * 1000);
+            setStartDate(start.toISOString());
+            setEndDate(end.toISOString());
+        }
+    };
+
+    const load = async () => {
+        setIsLoading(true);
+        try {
+            const q: AuditQuery = { page, limit, search, sort, order };
+            if (level && level !== 'ALL') q.level = level;
+            if (startDate) q.startDate = startDate;
+            if (endDate) q.endDate = endDate;
+            const res: any = await fetchAuditLogs(q);
+            setUsingMock(!!res.fromMock);
+            setLogs((res.logs || []).map((l: any) => ({
+                ...l,
+                details: maskSensitive(typeof l.details === 'string' ? tryParse(l.details) : l.details)
+            })));
+            setTotal(res.total || 0);
+        } catch (e: any) {
+            console.error(e);
+            // TODO: show toast notification
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, search, level, startDate, endDate, sort, order]);
+
+    // Live tail polling
+    useEffect(() => {
+        if (liveTail) {
+            tailRef.current = window.setInterval(() => {
+                load();
+            }, 5000); // increased to 5s to be gentler on server
+        } else if (tailRef.current) {
+            window.clearInterval(tailRef.current);
+            tailRef.current = null;
+        }
+        return () => {
+            if (tailRef.current) window.clearInterval(tailRef.current);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [liveTail]);
+
+    const tryParse = (s: string) => {
+        try { return JSON.parse(s); } catch { return s; }
+    };
+
+    const exportCsv = async (fmt: 'csv' | 'json') => {
+        try {
+            const blob = await exportAuditLogs(
+                { startDate, endDate, level: level === 'ALL' ? undefined : level, search },
+                fmt
+            );
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.${fmt}`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const sortToggle = (field: string) => {
+        if (sort === field) setOrder(order === 'asc' ? 'desc' : 'asc');
+        else { setSort(field); setOrder('desc'); }
+    };
+
+    const metrics = useMemo(() => {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const logsToday = logs.filter(l => new Date(l.timestamp) >= todayStart).length;
+        const critical24h = logs.filter(
+            l => (l.level === 'ERROR' || l.level === 'CRITICAL') &&
+                (new Date(l.timestamp) >= new Date(Date.now() - 24 * 3600 * 1000))
+        ).length;
+        const failedLogins = logs.filter(l => l.level === 'LOGIN' && /failed/i.test(l.message)).length;
+
+        return { logsToday, critical24h, failedLogins };
+    }, [logs]);
+
+    return (
+        <AdminRoute>
+            <LayoutWrapper>
+                <div className="min-h-screen bg-gray-50 pb-6">
+
+                    {usingMock && (
+                        <div className="max-w-7xl mx-auto px-4 md:px-6 pb-4">
+                            <div className="rounded-md bg-yellow-50 border border-yellow-100 text-yellow-800 px-4 py-2 text-sm">Using local mock audit logs because the backend is unavailable.</div>
+                        </div>
+                    )}
+
+                    {/* Header + Actions */}
+                    <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-3 md:px-6 md:py-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-7xl mx-auto">
+                            <div>
+                                <h1 className="text-xl md:text-2xl font-bold text-gray-900">Audit Logs</h1>
+                                <p className="text-sm text-gray-600 mt-0.5">System activity & security events</p>
+                            </div>
+
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {/* Live Tail Toggle - always visible */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600 hidden sm:inline">Live</span>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            aria-label="Live tail"
+                                            checked={liveTail}
+                                            onChange={(e) => setLiveTail(e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+
+                                {/* Export buttons */}
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => exportCsv('csv')}
+                                        className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 shadow-sm"
+                                    >
+                                        <LucideIcons.Download size={16} />
+                                        CSV
+                                    </button>
+                                    <button
+                                        onClick={() => exportCsv('json')}
+                                        className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 shadow-sm"
+                                    >
+                                        <LucideIcons.Download size={16} />
+                                        JSON
+                                    </button>
+                                </div>
+
+                                {/* Mobile filter toggle */}
+                                <button
+                                    onClick={() => setShowMobileFilters(!showMobileFilters)}
+                                    className="md:hidden px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
+                                >
+                                    {showMobileFilters ? 'Hide' : 'Filters'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Metrics */}
+                    <div className="px-4 pt-5 md:px-6 max-w-7xl mx-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Total Logs</p>
+                                        <p className="text-2xl font-bold mt-1">{total.toLocaleString()}</p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 rounded-lg">
+                                        <LucideIcons.Database size={24} className="text-blue-600" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Critical (24h)</p>
+                                        <p className={`text-2xl font-bold mt-1 ${metrics.critical24h > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                            {metrics.critical24h}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-red-50 rounded-lg">
+                                        <LucideIcons.AlertTriangle size={24} className="text-red-600" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Failed Logins (24h)</p>
+                                        <p className={`text-2xl font-bold mt-1 ${metrics.failedLogins > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                                            {metrics.failedLogins}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-amber-50 rounded-lg">
+                                        <LucideIcons.ShieldAlert size={24} className="text-amber-600" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Filters Panel */}
+                    <div className={`px-4 md:px-6 max-w-7xl mx-auto ${showMobileFilters ? 'block' : 'hidden md:block'} mb-6`}>
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="p-4 md:p-5 border-b border-gray-200">
+                                <h2 className="text-lg font-semibold text-gray-900">Filters & Quick Presets</h2>
+                            </div>
+
+                            <div className="p-4 md:p-5 space-y-5">
+                                {/* Quick Presets */}
+                                <div className="flex flex-wrap gap-2">
+                                    <button onClick={presets.today} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
+                                        Today
+                                    </button>
+                                    <button onClick={presets.last24h} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
+                                        Last 24h
+                                    </button>
+                                    <button onClick={presets.last7d} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium">
+                                        Last 7 Days
+                                    </button>
+                                </div>
+
+                                {/* Main Filters */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Log Level</label>
+                                        <select
+                                            title="Log level"
+                                            value={level}
+                                            onChange={(e) => setLevel(e.target.value)}
+                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        >
+                                            {LEVELS.map(l => (
+                                                <option key={l} value={l}>{l}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="md:col-span-2 lg:col-span-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Search</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                title="Search logs"
+                                                value={search}
+                                                onChange={(e) => setSearch(e.target.value)}
+                                                placeholder="User, message, IP..."
+                                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                            />
+                                            <LucideIcons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        </div>
+                                    </div>
+
+                                    {/* Date range - can be improved with date picker later */}
+                                    <div className="grid grid-cols-2 gap-3 md:col-span-2 lg:col-span-1">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">From</label>
+                                            <input
+                                                type="date"
+                                                title="From date"
+                                                value={startDate ? startDate.split('T')[0] : ''}
+                                                onChange={e => setStartDate(e.target.value ? `${e.target.value}T00:00:00Z` : undefined)}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">To</label>
+                                            <input
+                                                type="date"
+                                                title="To date"
+                                                value={endDate ? endDate.split('T')[0] : ''}
+                                                onChange={e => setEndDate(e.target.value ? `${e.target.value}T23:59:59Z` : undefined)}
+                                                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-gray-200">
+                                    <button
+                                        onClick={() => { setPage(1); load(); }}
+                                        className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                    >
+                                        Apply Filters
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setSearch('');
+                                            setLevel('ALL');
+                                            setStartDate(undefined);
+                                            setEndDate(undefined);
+                                            setPage(1);
+                                        }}
+                                        className="px-6 py-2.5 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Logs Content */}
+                    <div className="px-4 md:px-6 max-w-7xl mx-auto">
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+
+                            {/* Table Header Info */}
+                            <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <h2 className="text-lg font-semibold text-gray-900">Audit Entries</h2>
+                                <div className="text-sm text-gray-600">
+                                    Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, total)} of {total.toLocaleString()}
+                                </div>
+                            </div>
+
+                            {/* Desktop Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => sortToggle('timestamp')}>
+                                                Time {sort === 'timestamp' && (order === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => sortToggle('level')}>
+                                                Level {sort === 'level' && (order === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => sortToggle('user')}>
+                                                User {sort === 'user' && (order === 'asc' ? '↑' : '↓')}
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Message</th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Entity</th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">IP</th>
+                                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white">
+                                        {isLoading ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-16 text-center text-gray-500">
+                                                    Loading audit logs...
+                                                </td>
+                                            </tr>
+                                        ) : logs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-16 text-center text-gray-500">
+                                                    No matching audit logs found
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            logs.map(log => <DesktopRow key={log.id} log={log} />)
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile Cards */}
+                            <div className="md:hidden divide-y divide-gray-200">
+                                {isLoading ? (
+                                    <div className="p-8 text-center text-gray-500">Loading...</div>
+                                ) : logs.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-500">No logs found</div>
+                                ) : (
+                                    logs.map(log => <MobileRow key={log.id} log={log} />)
+                                )}
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="px-4 py-4 md:px-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div className="text-sm text-gray-600 order-2 sm:order-1">
+                                    Page {page} of {Math.ceil(total / limit) || 1}
+                                </div>
+                                <div className="flex items-center gap-2 order-1 sm:order-2">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page <= 1 || isLoading}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="px-4 py-2 font-medium">{page}</span>
+                                    <button
+                                        onClick={() => setPage(p => p + 1)}
+                                        disabled={page * limit >= total || isLoading}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </LayoutWrapper>
+        </AdminRoute>
+    );
+};
+
+const DetailPreview: React.FC<{ details?: any }> = ({ details }) => {
+    if (!details) return <span className="text-sm text-gray-500">-</span>;
+    const s = typeof details === 'string' ? details : JSON.stringify(details);
+    const truncated = s.length > 200 ? `${s.slice(0, 200)}…` : s;
+    return <pre className="whitespace-pre-wrap text-sm text-gray-700 max-h-52 overflow-auto">{truncated}</pre>;
+};
+
+const DesktopRow: React.FC<{ log: AuditLog }> = ({ log }) => {
+    return (
+        <tr>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatLocal(log.timestamp)}</td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${log.level === 'ERROR' || log.level === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {log.level || 'N/A'}
+                </span>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{log.user || '-'}</td>
+            <td className="px-6 py-4 text-sm text-gray-700 max-w-[420px] overflow-hidden text-ellipsis">{log.message || log.action || '-'}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{log.entity || log.module || '-'}</td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{log.ipAddress || '-'}</td>
+            <td className="px-6 py-4 text-sm text-gray-700 max-w-[360px] overflow-hidden">
+                <DetailPreview details={log.details} />
+            </td>
+        </tr>
+    );
+};
+
+const MobileRow: React.FC<{ log: AuditLog }> = ({ log }) => {
+    return (
+        <div className="p-4">
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                        <div className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${log.level === 'ERROR' || log.level === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                            {log.level || 'N/A'}
+                        </div>
+                        <div className="text-sm font-medium text-gray-900">{log.message || log.action || '-'}</div>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">By {log.user || '-'}</div>
+                    <div className="text-xs text-gray-500 mt-1">{formatLocal(log.timestamp)} · {log.ipAddress || '-'}</div>
+                    <div className="mt-2 text-sm text-gray-700"><DetailPreview details={log.details} /></div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default AuditLogsPage;

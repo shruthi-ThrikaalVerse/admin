@@ -7,12 +7,12 @@ import { useAuth } from '../context/AuthContext';
 import { mockDepartmentHeadcount } from '../mockData';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ParticipationStatus, PayslipData } from '../types';
- 
+
 const Icon = ({ name, className }: { name: string; className?: string }) => {
   const LucideIcon = (LucideIcons as any)[name];
   return LucideIcon ? <LucideIcon className={className} /> : null;
 };
- 
+
 const StatsCard = ({ title, value, icon, color, subValue, trend }: any) => (
   <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group overflow-hidden relative">
     <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-150 transition-transform">
@@ -35,17 +35,17 @@ const StatsCard = ({ title, value, icon, color, subValue, trend }: any) => (
     </div>
   </div>
 );
- 
+
 const Dashboard: React.FC = () => {
   const { employees, activities, leaves, attendance, updateLeaveStatus, events, toggleEventParticipation, payslips, notify } = useHRMS();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [eventFilter, setEventFilter] = useState<'all' | 'mine'>('all');
- 
+
   const pendingLeaves = leaves.filter(l => l.status === 'pending');
   const activeCount = employees.filter(e => e.status === 'active').length;
   const inactiveCount = employees.length - activeCount;
- 
+
   const today = '2024-05-15';
   const presentCount = attendance.filter(a => a.date === today && (a.status === 'present' || a.status === 'late')).length;
   const presenceRate = employees.length > 0 ? Math.round((presentCount / employees.length) * 100) : 0;
@@ -55,8 +55,8 @@ const Dashboard: React.FC = () => {
   const displayEvents = useMemo(() => {
     let list = events.filter(e => e.isPublished && e.status === 'upcoming');
     if (eventFilter === 'mine' && currentEmployee) {
-      list = list.filter(e => 
-        e.audience === 'all' || 
+      list = list.filter(e =>
+        e.audience === 'all' ||
         (e.audience === 'selected' && e.targetEmployeeIds.includes(currentEmployee.id)) ||
         (e.audience === 'department' && e.targetDepartment === currentEmployee.department)
       );
@@ -68,10 +68,10 @@ const Dashboard: React.FC = () => {
     if (!currentEmployee) return [];
     return payslips.filter(p => (p.employeeId === currentEmployee.employeeId || p.employeeId === currentEmployee.id) && p.status === 'sent');
   }, [payslips, currentEmployee]);
- 
+
   const handleTraceActivity = (type: string, name: string) => {
     notify(`Tracing ${type} record for ${name}...`, 'info');
-   
+
     switch (type) {
       case 'checkin':
       case 'checkout':
@@ -102,7 +102,7 @@ const Dashboard: React.FC = () => {
       notify(`Payslip for ${p.month} ${p.year} downloaded!`, 'success');
     }, 1000);
   };
- 
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -111,13 +111,13 @@ const Dashboard: React.FC = () => {
           <p className="text-slate-500 text-sm font-medium">Global system overview and administrative health metrics.</p>
         </div>
         <div className="flex items-center gap-3">
-           <div className="px-4 py-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">System Operational</span>
-           </div>
+          <div className="px-4 py-2 bg-white border border-slate-200 rounded-2xl shadow-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">System Operational</span>
+          </div>
         </div>
       </div>
- 
+
       {/* Primary Dashboard Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
@@ -129,7 +129,7 @@ const Dashboard: React.FC = () => {
           subValue="Staff"
         />
         <StatsCard
-          title="Presence Today"
+          title="Employees Present Today"
           value={`${presenceRate}%`}
           icon="CalendarCheck"
           color="bg-blue-500"
@@ -150,10 +150,10 @@ const Dashboard: React.FC = () => {
           subValue="Action Needed"
         />
       </div>
- 
+
       {/* Main Insight Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Col: Headcount + Live Activity */}
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
@@ -167,11 +167,11 @@ const Dashboard: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={mockDepartmentHeadcount}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="department" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} />
+                  <XAxis dataKey="department" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
                   <Tooltip
-                    cursor={{fill: '#f8fafc'}}
-                    contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)'}}
+                    cursor={{ fill: '#f8fafc' }}
+                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)' }}
                   />
                   <Bar dataKey="count" radius={[10, 10, 0, 0]} barSize={40}>
                     {mockDepartmentHeadcount.map((entry, index) => (
@@ -189,20 +189,19 @@ const Dashboard: React.FC = () => {
                 <h2 className="text-xl font-bold text-slate-900">Live Activity Feed</h2>
                 <p className="text-xs text-slate-400 font-medium">Real-time sync from across the organization.</p>
               </div>
-              <button className="p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-2xl transition-all"><Icon name="Filter" className="w-5 h-5" /></button>
+              <button title="Filter activities" aria-label="Filter activities" className="p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-2xl transition-all"><Icon name="Filter" className="w-5 h-5" /></button>
             </div>
             <div className="divide-y divide-slate-50">
               {activities.slice(0, 5).map((activity) => (
                 <div key={activity.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center gap-6 group">
-                  <div className={`p-4 rounded-2xl transition-all group-hover:scale-110 group-hover:shadow-lg ${
-                    activity.type === 'checkin' ? 'bg-emerald-50 text-emerald-600' :
+                  <div className={`p-4 rounded-2xl transition-all group-hover:scale-110 group-hover:shadow-lg ${activity.type === 'checkin' ? 'bg-emerald-50 text-emerald-600' :
                     activity.type === 'leave' ? 'bg-amber-50 text-amber-600' :
-                    'bg-indigo-50 text-indigo-600'
-                  }`}>
+                      'bg-indigo-50 text-indigo-600'
+                    }`}>
                     <Icon name={
                       activity.type === 'checkin' ? 'Zap' :
-                      activity.type === 'leave' ? 'Clock' :
-                      'ShieldCheck'
+                        activity.type === 'leave' ? 'Clock' :
+                          'ShieldCheck'
                     } className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
@@ -228,10 +227,10 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
- 
+
         {/* Right Col: Task Queue + Upcoming Events */}
         <div className="space-y-8">
-          
+
           {/* Organization Calendar Widget */}
           <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col">
             <div className="flex items-center justify-between mb-6">
@@ -240,14 +239,14 @@ const Dashboard: React.FC = () => {
                 Events Hub
               </h2>
               <div className="flex bg-slate-50 p-1 rounded-xl">
-                 <button 
+                <button
                   onClick={() => setEventFilter('all')}
                   className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${eventFilter === 'all' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
-                 >All</button>
-                 <button 
+                >All</button>
+                <button
                   onClick={() => setEventFilter('mine')}
                   className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter transition-all ${eventFilter === 'mine' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
-                 >For Me</button>
+                >For Me</button>
               </div>
             </div>
             <div className="space-y-4 flex-1">
@@ -255,26 +254,26 @@ const Dashboard: React.FC = () => {
                 const userPart = evt.participations.find(p => p.employeeEmail === user?.email);
                 return (
                   <div key={evt.id} className="p-5 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 transition-all group">
-                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-indigo-600 border border-slate-100 group-hover:bg-indigo-50 transition-colors">
-                           <span className="text-[8px] font-black uppercase leading-none">{evt.startDate.split('-')[1]}</span>
-                           <span className="text-sm font-black leading-tight">{evt.startDate.split('-')[2]}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                           <h4 className="text-xs font-black text-slate-800 truncate group-hover:text-indigo-600 transition-colors">{evt.title}</h4>
-                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{evt.startTime} • {evt.isOnline ? 'Virtual' : 'On-Site'}</p>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-1.5">
-                        <button 
-                          onClick={() => handleToggleParticipation(evt.id, 'attending')}
-                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${userPart?.status === 'attending' ? 'bg-emerald-500 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
-                        >Attending</button>
-                        <button 
-                          onClick={() => handleToggleParticipation(evt.id, 'interested')}
-                          className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${userPart?.status === 'interested' ? 'bg-amber-500 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
-                        >Maybe</button>
-                     </div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-indigo-600 border border-slate-100 group-hover:bg-indigo-50 transition-colors">
+                        <span className="text-[8px] font-black uppercase leading-none">{evt.startDate.split('-')[1]}</span>
+                        <span className="text-sm font-black leading-tight">{evt.startDate.split('-')[2]}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-black text-slate-800 truncate group-hover:text-indigo-600 transition-colors">{evt.title}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{evt.startTime} • {evt.isOnline ? 'Virtual' : 'On-Site'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleToggleParticipation(evt.id, 'attending')}
+                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${userPart?.status === 'attending' ? 'bg-emerald-500 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                      >Attending</button>
+                      <button
+                        onClick={() => handleToggleParticipation(evt.id, 'interested')}
+                        className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${userPart?.status === 'interested' ? 'bg-amber-500 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                      >Maybe</button>
+                    </div>
                   </div>
                 );
               }) : (
@@ -283,7 +282,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-xs font-bold uppercase">No upcoming events</p>
                 </div>
               )}
-              <button 
+              <button
                 onClick={() => navigate('/events')}
                 className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-indigo-100 transition-all"
               >View Events Hub</button>
@@ -300,29 +299,31 @@ const Dashboard: React.FC = () => {
               <span className="text-[9px] font-black uppercase text-slate-400">Ledger Index</span>
             </div>
             <div className="space-y-3">
-               {userPayslips.length > 0 ? userPayslips.slice(0, 3).map(ps => (
-                 <div key={ps.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:bg-white hover;border-emerald-200 transition-all group flex items-center justify-between">
-                    <div>
-                       <p className="text-xs font-black text-slate-800">{ps.month} {ps.year}</p>
-                       <p className="text-[10px] font-bold text-emerald-600 mt-0.5">₹{ps.netPay.toLocaleString()}</p>
-                    </div>
-                    <button 
-                      onClick={() => handleDownloadPayslip(ps)}
-                      className="p-2 text-slate-300 hover:text-emerald-600 transition-colors"
-                    >
-                      <Icon name="Download" className="w-4 h-4" />
-                    </button>
-                 </div>
-               )) : (
+              {userPayslips.length > 0 ? userPayslips.slice(0, 3).map(ps => (
+                <div key={ps.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:bg-white hover;border-emerald-200 transition-all group flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-black text-slate-800">{ps.month} {ps.year}</p>
+                    <p className="text-[10px] font-bold text-emerald-600 mt-0.5">₹{ps.netPay.toLocaleString()}</p>
+                  </div>
+                  <button
+                    title={`Download payslip ${ps.month} ${ps.year}`}
+                    aria-label={`Download payslip for ${ps.month} ${ps.year}`}
+                    onClick={() => handleDownloadPayslip(ps)}
+                    className="p-2 text-slate-300 hover:text-emerald-600 transition-colors"
+                  >
+                    <Icon name="Download" className="w-4 h-4" />
+                  </button>
+                </div>
+              )) : (
                 <div className="py-8 text-center opacity-30">
                   <p className="text-[10px] font-black uppercase tracking-widest">No payslips issued yet</p>
                 </div>
-               )}
-               {userPayslips.length > 0 && (
-                 <button className="w-full py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">
-                   View Full History
-                 </button>
-               )}
+              )}
+              {userPayslips.length > 0 && (
+                <button className="w-full py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">
+                  View Full History
+                </button>
+              )}
             </div>
           </div>
 
@@ -337,11 +338,11 @@ const Dashboard: React.FC = () => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-400 text-xs shadow-sm">
-                          {item.employeeName.charAt(0)}
+                        {item.employeeName.charAt(0)}
                       </div>
                       <div className="flex-1">
-                          <p className="text-xs font-black text-slate-900 leading-none">{item.employeeName}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-1">{item.leaveType} REQUEST</p>
+                        <p className="text-xs font-black text-slate-900 leading-none">{item.employeeName}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-1">{item.leaveType} REQUEST</p>
                       </div>
                     </div>
                   </div>
@@ -374,5 +375,5 @@ const Dashboard: React.FC = () => {
     </div>
   );
 };
- 
+
 export default Dashboard;
