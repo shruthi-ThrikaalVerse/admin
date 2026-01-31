@@ -4,7 +4,7 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  role: 'admin' | 'manager';
+  role: 'admin' | 'manager' | 'auditor';
   avatar: string;
 }
 
@@ -13,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, role: 'admin' | 'manager', password: string) => Promise<void>;
+  register: (name: string, email: string, role: 'admin' | 'manager' | 'auditor', password: string) => Promise<void>;
   logout: () => void;
 }
 

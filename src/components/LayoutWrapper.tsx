@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import NotificationToast from './NotificationToast';
+import ErrorBoundary from './ErrorBoundary';
 
 const LayoutWrapper: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,7 +14,9 @@ const LayoutWrapper: React.FC<{ children?: React.ReactNode }> = ({ children }) =
       <div className="lg:ml-64 flex flex-col min-h-screen">
         <Header setOpen={setSidebarOpen} />
         <main className="flex-1 p-4 lg:p-8">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
       <NotificationToast />

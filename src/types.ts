@@ -243,12 +243,32 @@ export interface GoalTracking {
 
 export interface AuditLog {
   id: string;
-  timestamp: string;
-  user: string;
-  action: string;
-  module: string;
-  details: string;
-  ipAddress: string;
+  timestamp: string; // ISO string UTC or local string
+  // Optional legacy fields kept for compatibility with existing UI code
+  action?: string; // e.g., Create, Update, Delete
+  module?: string; // e.g., Payroll, Employee
+  level?: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL' | 'LOGIN' | 'CREATE' | 'UPDATE' | 'DELETE' | 'SECURITY';
+  user: {
+    id?: string;
+    username?: string;
+    displayName?: string;
+  } | string; // string for legacy "System"
+  userId?: string;
+  message?: string;
+  entity?: string; // e.g., "User:123", "Page:/about"
+  details?: Record<string, any> | string; // optional JSON diff or details
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  metadata?: Record<string, any>;
+}
+
+// Navigation item type used by the sidebar
+export interface NavItem {
+  id: string;
+  label: string;
+  icon?: string;
+  path?: string;
+  badge?: string | number;
 }
 
 export interface Notification {
@@ -256,4 +276,4 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
   timestamp: string;
-}
+} 
