@@ -12,6 +12,8 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
+  /* Force page-level scrolling into the app's main element */
 }
 
 body {
@@ -34,6 +36,38 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(15, 23, 42, 0.06);
   border-radius: 9999px
+}
+
+/* Invisible scrollbar - hides scrollbar but keeps scrolling enabled */
+/* -ms-overflow-style: IE/Edge, scrollbar-width: Firefox, -webkit-overflow-scrolling: iOS */
+/* Use @supports to reduce editor/browser compatibility warnings */
+.invisible-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+}
+
+/* Firefox supports 'scrollbar-width' */
+@supports (scrollbar-width: none) {
+  .invisible-scrollbar {
+    scrollbar-width: none;
+    /* Firefox */
+  }
+}
+
+/* iOS Safari supports -webkit-overflow-scrolling */
+@supports (-webkit-overflow-scrolling: touch) {
+  .invisible-scrollbar {
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling on iOS */
+  }
+}
+
+/* WebKit browsers */
+.invisible-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Safari and Chrome */
+  width: 0;
+  height: 0;
 }
 
 /* Hide number input spinners so users don't get the browser 'number chooser' */

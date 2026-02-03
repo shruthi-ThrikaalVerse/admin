@@ -186,12 +186,6 @@ const Header: React.FC<{ setOpen: (val: boolean) => void }> = ({ setOpen }) => {
               >
                 <Icon name="User" className="w-4 h-4" /> View Full Profile
               </button>
-              <button
-                onClick={() => { navigate('/settings'); setShowDropdown(false); }}
-                className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors"
-              >
-                <Icon name="Settings" className="w-4 h-4" /> Settings
-              </button>
               <div className="border-t border-slate-50 mt-2 pt-2">
                 <button
                   onClick={() => {

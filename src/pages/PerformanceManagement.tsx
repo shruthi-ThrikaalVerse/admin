@@ -63,7 +63,7 @@ const EmployeePerformanceModal: React.FC<{
         {hasHalfStar && (
           <div className="relative">
             <Star className="w-4 h-4 text-gray-300" />
-            <div className="absolute left-0 top-0 overflow-hidden" style={{ width: '50%' }}>
+            <div className="absolute left-0 top-0 overflow-hidden w-1/2">
               <Star className="w-4 h-4 text-yellow-500 fill-current" />
             </div>
           </div>
@@ -92,7 +92,7 @@ const EmployeePerformanceModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="p-6 border-b flex items-center justify-between bg-white sticky top-0 z-10">
@@ -163,8 +163,7 @@ const EmployeePerformanceModal: React.FC<{
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-emerald-500 h-2 rounded-full"
-                            style={{ width: `${employee.kpiScore}%` }}
+                            className={`bg-emerald-500 h-2 rounded-full w-[${employee.kpiScore}%]`}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-900">{employee.kpiScore}%</span>
@@ -175,8 +174,7 @@ const EmployeePerformanceModal: React.FC<{
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${employee.taskCompletion}%` }}
+                            className={`bg-blue-500 h-2 rounded-full w-[${employee.taskCompletion}%]`}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-900">{employee.taskCompletion}%</span>
@@ -187,8 +185,7 @@ const EmployeePerformanceModal: React.FC<{
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
                           <div
-                            className="bg-amber-500 h-2 rounded-full"
-                            style={{ width: `${employee.qualityScore}%` }}
+                            className={`bg-amber-500 h-2 rounded-full w-[${employee.qualityScore}%]`}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-900">{employee.qualityScore}%</span>
@@ -210,8 +207,7 @@ const EmployeePerformanceModal: React.FC<{
                     <div className="flex items-center gap-3">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-green-500 h-2 rounded-full"
-                          style={{ width: `${goal.progress}%` }}
+                          className={`bg-green-500 h-2 rounded-full w-[${goal.progress}%]`}
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-700">{goal.progress}%</span>
@@ -507,7 +503,7 @@ const EmployeePerformanceDashboard: React.FC = () => {
         {hasHalfStar && (
           <div className="relative">
             <Star className="w-4 h-4 text-gray-300" />
-            <div className="absolute left-0 top-0 overflow-hidden" style={{ width: '50%' }}>
+            <div className="absolute left-0 top-0 overflow-hidden w-1/2">
               <Star className="w-4 h-4 text-yellow-500 fill-current" />
             </div>
           </div>
@@ -650,8 +646,7 @@ const EmployeePerformanceDashboard: React.FC = () => {
                 <div className="mt-1">
                   <div className="w-20 bg-gray-200 rounded-full h-1.5">
                     <div
-                      className="bg-emerald-500 h-1.5 rounded-full"
-                      style={{ width: `${avgAttendance}%` }}
+                      className={`bg-emerald-500 h-1.5 rounded-full w-[${avgAttendance}%]`}
                     />
                   </div>
                 </div>
@@ -721,8 +716,7 @@ const EmployeePerformanceDashboard: React.FC = () => {
                       <td className="p-3">
                         <div className="w-20 bg-gray-200 rounded-full h-1.5">
                           <div
-                            className="bg-blue-500 h-1.5 rounded-full"
-                            style={{ width: `${dept.avgKPIScore}%` }}
+                            className={`bg-blue-500 h-1.5 rounded-full w-[${dept.avgKPIScore}%]`}
                           />
                         </div>
                         <span className="text-xs text-gray-700 mt-1">{dept.avgKPIScore}%</span>
@@ -761,14 +755,7 @@ const EmployeePerformanceDashboard: React.FC = () => {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div
-                      className="h-1.5 rounded-full"
-                      style={{
-                        width: `${kpi.value}%`,
-                        backgroundColor: index === 0 ? '#3b82f6' :
-                          index === 1 ? '#10b981' :
-                            index === 2 ? '#f59e0b' :
-                              index === 3 ? '#8b5cf6' : '#ec4899'
-                      }}
+                      className={`h-1.5 rounded-full ${kpi.color} w-[${kpi.value}%]`}
                     />
                   </div>
                 </div>
