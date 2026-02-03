@@ -201,6 +201,7 @@ const DocumentManagement: React.FC = () => {
         ref={fileInputRef}
         className="hidden"
         onChange={handleFileChange}
+        title="Upload document file"
       />
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

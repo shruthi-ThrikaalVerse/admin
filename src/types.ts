@@ -78,6 +78,8 @@ export interface EmployeeSummary {
   phone?: string;
   status: EmployeeStatus;
   dateOfJoining: string;
+  dateOfBirth?: string;
+  employmentType?: string;
   reportingManager: string;
   location: string;
   tags: string[];

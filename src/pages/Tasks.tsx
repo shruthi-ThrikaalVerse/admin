@@ -358,6 +358,7 @@ const Tasks: React.FC = () => {
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
                 value={newTask.assignedTo}
                 onChange={e => setNewTask({ ...newTask, assignedTo: e.target.value })}
+                title="Select target entity"
               >
                 <option value="">Select {newTask.assigneeType}</option>
                 {newTask.assigneeType === 'employee' && (

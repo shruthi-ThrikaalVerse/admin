@@ -142,6 +142,7 @@ const Profile: React.FC = () => {
                 <button
                   onClick={handleRemovePhoto}
                   className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-all shadow-lg"
+                  title="Remove profile photo"
                 >
                   <Icon name="X" className="w-4 h-4" />
                 </button>
@@ -176,6 +177,7 @@ const Profile: React.FC = () => {
               onClick={handleUploadClick}
               disabled={isUploading}
               className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              title="Upload profile photo"
             >
               {isUploading ? (
                 <>
@@ -194,6 +196,7 @@ const Profile: React.FC = () => {
               onClick={handleRemovePhoto}
               disabled={!userProfilePhoto || isUploading}
               className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              title="Remove profile photo"
             >
               <Icon name="Trash2" className="w-3.5 h-3.5" />
               Remove
@@ -205,6 +208,8 @@ const Profile: React.FC = () => {
               onChange={handlePhotoUpload}
               accept="image/*"
               className="hidden"
+              title="Upload profile photo"
+              placeholder="Upload profile photo"
             />
           </div>
 
@@ -324,6 +329,8 @@ const Profile: React.FC = () => {
               notify(`MFA Protocol ${!isMfaEnabled ? 'Enabled' : 'Disabled'}`, !isMfaEnabled ? 'success' : 'warning');
             }}
             className={`w-14 h-8 rounded-full transition-all relative p-1.5 ${isMfaEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+            title={`${isMfaEnabled ? 'Disable' : 'Enable'} two-factor authentication`}
+            aria-label={`MFA toggle: currently ${isMfaEnabled ? 'enabled' : 'disabled'}`}
           >
             <div className={`w-5 h-5 bg-white rounded-full transition-all shadow-md ${isMfaEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
           </button>
@@ -373,6 +380,7 @@ const Profile: React.FC = () => {
       <button
         onClick={() => setActiveTab('activity')}
         className="w-full mt-8 py-3 text-indigo-600 bg-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all"
+        title="View complete audit log"
       >
         View Full Audit
       </button>
@@ -409,17 +417,17 @@ const Profile: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => notify('Profile settings saved.', 'success')} className="px-6 py-3 bg-white rounded-2xl border border-slate-100 text-slate-700 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">Save</button>
-          <button onClick={() => notify('Profile exported.', 'info')} className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-100 transition-all">Export</button>
+          <button onClick={() => notify('Profile settings saved.', 'success')} className="px-6 py-3 bg-white rounded-2xl border border-slate-100 text-slate-700 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all" title="Save profile settings">Save</button>
+          <button onClick={() => notify('Profile exported.', 'info')} className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-100 transition-all" title="Export profile">Export</button>
         </div>
       </div>
 
       <div>
         <div className="mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setActiveTab('details')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Details</button>
-            <button onClick={() => setActiveTab('security')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'security' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Security</button>
-            <button onClick={() => setActiveTab('activity')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'activity' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Activity</button>
+            <button onClick={() => setActiveTab('details')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`} title="View profile details">Details</button>
+            <button onClick={() => setActiveTab('security')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'security' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`} title="View security settings">Security</button>
+            <button onClick={() => setActiveTab('activity')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'activity' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`} title="View activity log">Activity</button>
           </div>
         </div>
 

@@ -309,6 +309,7 @@ const EventsAdmin: React.FC = () => {
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
                 value={formData.type}
                 onChange={e => setFormData({ ...formData, type: e.target.value as any })}
+                title="Select event category"
               >
                 {['company', 'team', 'training', 'meeting', 'holiday'].map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
               </select>
@@ -361,6 +362,7 @@ const EventsAdmin: React.FC = () => {
                   type="button"
                   onClick={() => setFormData({ ...formData, isOnline: !formData.isOnline })}
                   className={`w-10 h-5 rounded-full relative transition-colors ${formData.isOnline ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                  aria-label="Toggle virtual event mode"
                 >
                   <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${formData.isOnline ? 'left-6' : 'left-1'}`}></div>
                 </button>

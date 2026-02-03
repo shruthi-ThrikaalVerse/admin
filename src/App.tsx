@@ -24,7 +24,6 @@ import NotificationsAdmin from './pages/NotificationsAdmin';
 import PayrollProcessing from './pages/PayrollProcessing';
 import PayslipsAdmin from './pages/PayslipsAdmin';
 import PerformanceManagement from './pages/PerformanceManagement';
-import SystemAdmin from './pages/SystemAdmin';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -66,7 +65,6 @@ const App: React.FC = () => {
             <Route path="/payroll" element={<ProtectedRoute><LayoutWrapper><PayrollProcessing /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/payslips" element={<ProtectedRoute><LayoutWrapper><PayslipsAdmin /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/performance" element={<ProtectedRoute><LayoutWrapper><PerformanceManagement /></LayoutWrapper></ProtectedRoute>} />
-            <Route path="/system" element={<ProtectedRoute><LayoutWrapper><SystemAdmin /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><LayoutWrapper><Profile /></LayoutWrapper></ProtectedRoute>} />
             <Route path="/tailwind-test" element={<ProtectedRoute><LayoutWrapper><TailwindTest /></LayoutWrapper></ProtectedRoute>} />
