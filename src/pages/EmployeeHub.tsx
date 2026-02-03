@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useHRMS } from '../context/HRMSContext';
 import { EmployeeSummary } from '../types';
@@ -14,7 +14,7 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
-      <div className="bg-white rounded-[32px] w-full max-w-xl relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="bg-white rounded-[32px] w-full max-w-2xl relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         <div className="p-8 border-b flex items-center justify-between bg-white sticky top-0">
           <h2 className="text-2xl font-black text-slate-900">{title}</h2>
           <button onClick={onClose} aria-label="Close" title="Close" className="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
@@ -37,14 +37,30 @@ const EmployeeHub: React.FC = () => {
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeSummary | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Internship'];
+
+  // Get current date for date of joining
+  const getCurrentDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
 
   const [newEmp, setNewEmp] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    dateOfBirth: '',
+    dateOfJoining: getCurrentDate(),
     designation: '',
     department: DEPARTMENTS[0],
-    email: '',
     location: LOCATIONS[0],
-    password: 'defaultPassword123' // Set a default password
+    employmentType: EMPLOYMENT_TYPES[0],
+    password: 'defaultPassword123'
   });
 
   const filteredEmployees = useMemo(() => {
@@ -56,22 +72,70 @@ const EmployeeHub: React.FC = () => {
     });
   }, [employees, searchTerm, deptFilter]);
 
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Combine first and last name
+    const fullName = `${newEmp.firstName} ${newEmp.lastName}`.trim();
+
+    // Create avatar URL - use uploaded image or generate from name
+    let avatarUrl = '';
+    if (profileImagePreview) {
+      avatarUrl = profileImagePreview;
+    } else {
+      // Generate initial avatar as fallback
+      const initials = `${newEmp.firstName.charAt(0)}${newEmp.lastName.charAt(0)}`.toUpperCase();
+      avatarUrl = `https://ui-avatars.com/api/?name=${initials}&background=random`;
+    }
+
     // Ensure password is included when adding employee
     addEmployee({
-      ...newEmp,
-      password: newEmp.password || generatePassword() // Make sure password is set
+      fullName: fullName,
+      designation: newEmp.designation,
+      department: newEmp.department,
+      email: newEmp.email,
+      location: newEmp.location,
+      password: newEmp.password || generatePassword(),
+      phone: newEmp.phone,
+      dateOfJoining: newEmp.dateOfJoining,
+      dateOfBirth: newEmp.dateOfBirth,
+      employmentType: newEmp.employmentType,
+      avatar: avatarUrl
     });
+
     setAddModalOpen(false);
     setNewEmp({
-      fullName: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      dateOfBirth: '',
+      dateOfJoining: getCurrentDate(),
       designation: '',
       department: DEPARTMENTS[0],
-      email: '',
       location: LOCATIONS[0],
+      employmentType: EMPLOYMENT_TYPES[0],
       password: 'defaultPassword123'
     });
+    setProfileImage(null);
+    setProfileImagePreview(null);
   };
 
   const generatePassword = () => {
@@ -163,7 +227,7 @@ const EmployeeHub: React.FC = () => {
               onChange={(e) => setDeptFilter(e.target.value)}
               className="px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest text-slate-500"
             >
-              <option value="All">All Clusters</option>
+              <option value="All">All Departments</option>
               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
@@ -175,6 +239,7 @@ const EmployeeHub: React.FC = () => {
               <thead className="bg-slate-50/50">
                 <tr className="border-b border-slate-100">
                   <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Employee Profile</th>
+                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Type</th>
                   <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">System Status</th>
                   <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Leave Balance</th>
                   <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
@@ -193,6 +258,14 @@ const EmployeeHub: React.FC = () => {
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{emp.employeeId} • {emp.designation}</p>
                         </div>
                       </div>
+                    </td>
+                    <td className="py-6 px-8">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                        emp.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                          'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                        {emp.employmentType}
+                      </span>
                     </td>
                     <td className="py-6 px-8">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
@@ -251,6 +324,14 @@ const EmployeeHub: React.FC = () => {
                 <div className="mb-6">
                   <h3 className="font-black text-slate-900 leading-tight text-lg mb-1">{emp.fullName}</h3>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.employeeId}</p>
+                  <div className="mt-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${emp.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600' :
+                      emp.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>
+                      {emp.employmentType}
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <div className="bg-slate-50 rounded-2xl p-4">
@@ -279,6 +360,12 @@ const EmployeeHub: React.FC = () => {
               <div className="mt-4 flex gap-2">
                 <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">{selectedEmployee.department}</span>
                 <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">{selectedEmployee.status}</span>
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${selectedEmployee.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                  selectedEmployee.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                    'bg-amber-50 text-amber-600 border-amber-100'
+                  }`}>
+                  {selectedEmployee.employmentType}
+                </span>
               </div>
             </div>
 
@@ -438,20 +525,69 @@ const EmployeeHub: React.FC = () => {
       {/* Add Employee Form */}
       <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="New Staff Enrollment">
         <form onSubmit={handleAddSubmit} className="space-y-6">
+          {/* Profile Photo Upload */}
+          <div className="flex flex-col items-center">
+            <div className="relative mb-4">
+              <div className="w-32 h-32 rounded-3xl border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center">
+                {profileImagePreview ? (
+                  <img src={profileImagePreview} alt="Profile preview" className="w-full h-full object-cover" />
+                ) : (
+                  <Icon name="User" className="w-16 h-16 text-slate-300" />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={triggerFileInput}
+                className="absolute bottom-2 right-2 p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                title="Upload profile image"
+              >
+                <Icon name="Camera" className="w-5 h-5" />
+              </button>
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleProfileImageChange}
+              title="Upload profile image"
+              placeholder="Upload profile image"
+              accept="image/*"
+              className="hidden"
+            />
+            <p className="text-[10px] text-slate-400 text-center">
+              Click the camera icon to upload profile photo<br />
+              (Recommended: 400x400px, JPG or PNG)
+            </p>
+          </div>
+
+          {/* Personal Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label htmlFor="newEmpFullName" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+              <label htmlFor="newEmpFirstName" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name *</label>
               <input
-                id="newEmpFullName"
+                id="newEmpFirstName"
                 required
                 className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
-                placeholder="John Doe"
-                value={newEmp.fullName}
-                onChange={e => setNewEmp({ ...newEmp, fullName: e.target.value })}
+                placeholder="John"
+                value={newEmp.firstName}
+                onChange={e => setNewEmp({ ...newEmp, firstName: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="newEmpEmail" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Domain</label>
+              <label htmlFor="newEmpLastName" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name *</label>
+              <input
+                id="newEmpLastName"
+                required
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
+                placeholder="Doe"
+                value={newEmp.lastName}
+                onChange={e => setNewEmp({ ...newEmp, lastName: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="newEmpEmail" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email *</label>
               <input
                 id="newEmpEmail"
                 required
@@ -462,13 +598,85 @@ const EmployeeHub: React.FC = () => {
                 onChange={e => setNewEmp({ ...newEmp, email: e.target.value })}
               />
             </div>
+            <div className="space-y-2">
+              <label htmlFor="newEmpPhone" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+              <input
+                id="newEmpPhone"
+                type="tel"
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
+                placeholder="+91 9876543210"
+                value={newEmp.phone}
+                onChange={e => setNewEmp({ ...newEmp, phone: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="newEmpAddress" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Address</label>
+            <textarea
+              id="newEmpAddress"
+              className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300 min-h-[80px]"
+              placeholder="Full residential address"
+              value={newEmp.address}
+              onChange={e => setNewEmp({ ...newEmp, address: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="newEmpDateOfBirth" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date of Birth</label>
+              <input
+                id="newEmpDateOfBirth"
+                type="date"
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
+                value={newEmp.dateOfBirth}
+                onChange={e => setNewEmp({ ...newEmp, dateOfBirth: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="newEmpDateOfJoining" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date of Joining *</label>
+              <input
+                id="newEmpDateOfJoining"
+                type="date"
+                required
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
+                value={newEmp.dateOfJoining}
+                onChange={e => setNewEmp({ ...newEmp, dateOfJoining: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="newEmpEmploymentType" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Employment Type *</label>
+              <select
+                id="newEmpEmploymentType"
+                required
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-[10px] uppercase tracking-widest text-slate-500"
+                value={newEmp.employmentType}
+                onChange={e => setNewEmp({ ...newEmp, employmentType: e.target.value })}
+              >
+                {EMPLOYMENT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="newEmpDesignation" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Designation *</label>
+              <input
+                id="newEmpDesignation"
+                required
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
+                placeholder="Software Engineer"
+                value={newEmp.designation}
+                onChange={e => setNewEmp({ ...newEmp, designation: e.target.value })}
+              />
+            </div>
           </div>
 
           {/* Login Credentials Section */}
           <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 space-y-4">
             <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Initial Access Configuration</h4>
             <div className="space-y-2">
-              <label htmlFor="newEmpPassword" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">System Password</label>
+              <label htmlFor="newEmpPassword" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">System Password *</label>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <input
@@ -491,7 +699,6 @@ const EmployeeHub: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    // Show password in the input field
                     const passwordInput = document.getElementById('newEmpPassword') as HTMLInputElement;
                     if (passwordInput) {
                       passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
@@ -509,9 +716,10 @@ const EmployeeHub: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label htmlFor="newEmpDepartment" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Cluster</label>
+              <label htmlFor="newEmpDepartment" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Department *</label>
               <select
                 id="newEmpDepartment"
+                required
                 className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-[10px] uppercase tracking-widest text-slate-500"
                 value={newEmp.department}
                 onChange={e => setNewEmp({ ...newEmp, department: e.target.value })}
@@ -520,19 +728,22 @@ const EmployeeHub: React.FC = () => {
               </select>
             </div>
             <div className="space-y-2">
-              <label htmlFor="newEmpDesignation" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Designation</label>
-              <input
-                id="newEmpDesignation"
+              <label htmlFor="newEmpLocation" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Location *</label>
+              <select
+                id="newEmpLocation"
                 required
-                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
-                value={newEmp.designation}
-                onChange={e => setNewEmp({ ...newEmp, designation: e.target.value })}
-              />
+                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-[10px] uppercase tracking-widest text-slate-500"
+                value={newEmp.location}
+                onChange={e => setNewEmp({ ...newEmp, location: e.target.value })}
+              >
+                {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
             </div>
           </div>
+
           <div className="pt-6 border-t border-slate-100 flex gap-4">
-            <button type="button" onClick={() => setAddModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Abort</button>
-            <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Commit Enrollment</button>
+            <button type="button" onClick={() => setAddModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+            <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Add Employee</button>
           </div>
         </form>
       </Modal>

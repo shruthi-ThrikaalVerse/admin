@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, role: 'admin' | 'manager' | 'auditor', password: string) => Promise<void>;
   logout: () => void;
+  updateAvatar: (avatarUrl: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,8 +88,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
+  const updateAvatar = (avatarUrl: string) => {
+    if (!user) return;
+    const updatedUser = { ...user, avatar: avatarUrl };
+    setUser(updatedUser);
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );

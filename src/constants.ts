@@ -52,7 +52,6 @@ export const NAV_ITEMS = [
   { id: 'payroll', label: 'Payroll Central', icon: 'IndianRupee' },
   { id: 'payslips', label: 'Payslips Module', icon: 'ReceiptText' },
   { id: 'performance', label: 'Performance', icon: 'TrendingUp' },
-  { id: 'system', label: 'System Admin', icon: 'Settings' },
   { id: 'audit-logs', label: 'Audit Logs', icon: 'Activity' },
   { id: 'profile', label: 'My Profile', icon: 'UserCircle' },
 ];

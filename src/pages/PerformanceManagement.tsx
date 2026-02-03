@@ -108,6 +108,7 @@ const EmployeePerformanceModal: React.FC<{
           <button
             onClick={onClose}
             className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+            title="Close dialog"
           >
             <X className="w-6 h-6" />
           </button>
@@ -584,11 +585,12 @@ const EmployeePerformanceDashboard: React.FC = () => {
             <button
               onClick={handleRefreshData}
               className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              title="Refresh data"
             >
               <Activity className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
             </button>
 
-            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50" title="Download data">
               <Download className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
             </button>
           </div>
@@ -676,6 +678,7 @@ const EmployeePerformanceDashboard: React.FC = () => {
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                title="Select department"
               >
                 <option value="All">All Departments</option>
                 {departmentStats.map(dept => (

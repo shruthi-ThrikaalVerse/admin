@@ -194,31 +194,42 @@ const ProfilePictureModal = ({ isOpen, onClose, onUpload, onRemove, currentImage
 };
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
-  const { logs, notify, profilePhotos, updateProfilePhoto, removeProfilePhoto } = useHRMS();
+  const auth = useAuth();
+  const { user } = auth;
+  const { logs, notify, profilePhotos, updateProfilePhoto, removeProfilePhoto, getProfilePhoto } = useHRMS();
   const [activeTab, setActiveTab] = useState<'details' | 'security' | 'activity'>('details');
   const [isMfaEnabled, setIsMfaEnabled] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Load profile image from localStorage or user data
+  // Load profile image from HRMS, localStorage, or Auth user data
   useEffect(() => {
     if (user?.id) {
+      const hrmsPhoto = getProfilePhoto ? getProfilePhoto(user.id) : null;
+      if (hrmsPhoto) {
+        setProfileImage(hrmsPhoto);
+        return;
+      }
       const savedImage = localStorage.getItem(`profile_image_${user.id}`);
       if (savedImage) {
         setProfileImage(savedImage);
+        return;
       }
-      // Note: user.profilePicture might not exist yet, so we don't use it here
+      if (user.avatar) {
+        setProfileImage(user.avatar);
+      } else {
+        setProfileImage(null);
+      }
     }
-  }, [user]);
+  }, [user, profilePhotos]);
 
   // Profile Photo State
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get profile photo from context or use default
-  const userProfilePhoto = user ? profilePhotos[user.id] : null;
+  // Get profile photo from HRMS context or use default
+  const userProfilePhoto = user ? getProfilePhoto(user.id) : null;
 
   // Filter logs for current user
   const userLogs = useMemo(() => {
@@ -278,8 +289,12 @@ const Profile: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
-        // Store the photo URL in context
-        updateProfilePhoto(user.id, e.target.result as string);
+        const imageUrl = e.target.result as string;
+        // Store the photo URL in HRMS context and update Auth avatar so header updates
+        updateProfilePhoto(user.id, imageUrl);
+        auth.updateAvatar?.(imageUrl);
+        setProfileImage(imageUrl);
+        localStorage.setItem(`profile_image_${user.id}`, imageUrl);
         setIsUploading(false);
 
         // Reset file input
@@ -287,7 +302,7 @@ const Profile: React.FC = () => {
           fileInputRef.current.value = '';
         }
       }
-    };
+    }; 
     reader.onerror = () => {
       setIsUploading(false);
       notify('Failed to upload image', 'error');
@@ -328,6 +343,8 @@ const Profile: React.FC = () => {
         
         if (user?.id) {
           localStorage.setItem(`profile_image_${user.id}`, imageUrl);
+          updateProfilePhoto(user.id, imageUrl);
+          auth.updateAvatar?.(imageUrl);
         }
         
         // In a real app, you would:
@@ -348,6 +365,9 @@ const Profile: React.FC = () => {
   const handleRemoveProfilePicture = () => {
     setProfileImage(null);
     if (user?.id) {
+      removeProfilePhoto(user.id);
+      const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.fullName || 'admin')}`;
+      auth.updateAvatar?.(defaultAvatar);
       localStorage.removeItem(`profile_image_${user.id}`);
     }
     notify('Profile picture removed', 'info');
@@ -445,19 +465,11 @@ const Profile: React.FC = () => {
         <div className="relative">
           <div className="relative w-32 h-32">
             {userProfilePhoto ? (
-              <>
-                <img
-                  src={userProfilePhoto}
-                  alt="Profile"
-                  className="w-full h-full object-cover rounded-2xl border-4 border-white shadow-lg"
-                />
-                <button
-                  onClick={handleRemovePhoto}
-                  className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-all shadow-lg"
-                >
-                  <Icon name="X" className="w-4 h-4" />
-                </button>
-              </>
+              <img
+                src={userProfilePhoto}
+                alt="Profile"
+                className="w-full h-full object-cover rounded-2xl border-4 border-white shadow-lg"
+              />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center border-4 border-white shadow-lg">
                 <span className="text-4xl font-black text-white">
@@ -465,13 +477,11 @@ const Profile: React.FC = () => {
                 </span>
               </div>
             )}
-            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full border-4 border-slate-50 flex items-center justify-center shadow-lg">
-              {isUploading ? (
+            {isUploading && (
+              <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full border-4 border-slate-50 flex items-center justify-center shadow-lg">
                 <Icon name="Loader2" className="w-5 h-5 text-indigo-600 animate-spin" />
-              ) : (
-                <Icon name="Check" className="w-5 h-5 text-emerald-500" />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -488,6 +498,7 @@ const Profile: React.FC = () => {
               onClick={handleUploadClick}
               disabled={isUploading}
               className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              title="Upload profile photo"
             >
               {isUploading ? (
                 <>
@@ -506,6 +517,7 @@ const Profile: React.FC = () => {
               onClick={handleRemovePhoto}
               disabled={!userProfilePhoto || isUploading}
               className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              title="Remove profile photo"
             >
               <Icon name="Trash2" className="w-3.5 h-3.5" />
               Remove
@@ -517,6 +529,8 @@ const Profile: React.FC = () => {
               onChange={handlePhotoUpload}
               accept="image/*"
               className="hidden"
+              title="Upload profile photo"
+              placeholder="Upload profile photo"
             />
           </div>
 
@@ -662,6 +676,8 @@ const Profile: React.FC = () => {
               notify(`MFA Protocol ${!isMfaEnabled ? 'Enabled' : 'Disabled'}`, !isMfaEnabled ? 'success' : 'warning');
             }}
             className={`w-14 h-8 rounded-full transition-all relative p-1.5 ${isMfaEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+            title={`${isMfaEnabled ? 'Disable' : 'Enable'} two-factor authentication`}
+            aria-label={`MFA toggle: currently ${isMfaEnabled ? 'enabled' : 'disabled'}`}
           >
             <div className={`w-5 h-5 bg-white rounded-full transition-all shadow-md ${isMfaEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
           </button>
@@ -711,6 +727,7 @@ const Profile: React.FC = () => {
       <button
         onClick={() => setActiveTab('activity')}
         className="w-full mt-8 py-3 text-indigo-600 bg-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all"
+        title="View complete audit log"
       >
         View Full Audit
       </button>
@@ -736,28 +753,25 @@ const Profile: React.FC = () => {
                   </span>
                 </div>
               )}
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
-                <Icon name="Check" className="w-2.5 h-2.5 text-white" />
-              </div>
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900">{user?.fullName}</h1>
               <p className="text-xs text-slate-400 font-medium mt-1">{user?.email}</p>
             </div>
           </div>
-
-          {activeTab === 'details' && renderDetails()}
-          {activeTab === 'security' && renderSecurity()}
-          {activeTab === 'activity' && renderActivity()}
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => notify('Profile settings saved.', 'success')} className="px-6 py-3 bg-white rounded-2xl border border-slate-100 text-slate-700 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all" title="Save profile settings">Save</button>
+          <button onClick={() => notify('Profile exported.', 'info')} className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-100 transition-all" title="Export profile">Export</button>
         </div>
       </div>
 
       <div>
         <div className="mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setActiveTab('details')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Details</button>
-            <button onClick={() => setActiveTab('security')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'security' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Security</button>
-            <button onClick={() => setActiveTab('activity')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'activity' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Activity</button>
+            <button onClick={() => setActiveTab('details')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`} title="View profile details">Details</button>
+            <button onClick={() => setActiveTab('security')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'security' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`} title="View security settings">Security</button>
+            <button onClick={() => setActiveTab('activity')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'activity' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`} title="View activity log">Activity</button>
           </div>
         </div>
 
@@ -765,6 +779,14 @@ const Profile: React.FC = () => {
         {activeTab === 'security' && renderSecurity()}
         {activeTab === 'activity' && renderActivity()}
       </div>
+
+      <ProfilePictureModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onUpload={handleProfilePictureUpload}
+        onRemove={handleRemoveProfilePicture}
+        currentImage={profileImage || userProfilePhoto || undefined}
+      />
     </div>
   );
 };

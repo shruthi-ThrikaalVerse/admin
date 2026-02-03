@@ -66,7 +66,7 @@ const PayrollProcessing: React.FC = () => {
         setActiveTab('process');
       } catch (err) {
         console.error('Error executing runPayroll:', err);
-        notify('Failed to run payroll. Check console for details.', 'danger');
+        notify('Failed to run payroll. Check console for details.', 'error');
       } finally {
         setIsRunning(false);
       }
@@ -477,6 +477,7 @@ const PayrollProcessing: React.FC = () => {
                       type="number"
                       className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm text-slate-700"
                       value={(selectedEmpForSalary.salaryStructure as any)?.[f.key] || 0}
+                      placeholder={f.label}
                       onChange={(e) => {
                         const val = parseInt(e.target.value) || 0;
                         const currentStructure = selectedEmpForSalary.salaryStructure || { basic: 0, hra: 0, da: 0, specialAllowance: 0, pf: 0, esi: 0, professionalTax: 0, tds: 0 };
@@ -503,6 +504,7 @@ const PayrollProcessing: React.FC = () => {
                     type="text"
                     className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm text-slate-700"
                     value={selectedEmpForSalary.bankDetails?.bankName || ''}
+                    placeholder="Bank Name"
                     onChange={(e) => {
                       const val = e.target.value;
                       const currentBank = selectedEmpForSalary.bankDetails || { bankName: '', accountNumber: '', ifsc: '' };
@@ -516,6 +518,7 @@ const PayrollProcessing: React.FC = () => {
                     type="text"
                     className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm text-slate-700 font-mono"
                     value={selectedEmpForSalary.bankDetails?.accountNumber || ''}
+                    placeholder="Account Number"
                     onChange={(e) => {
                       const val = e.target.value;
                       const currentBank = selectedEmpForSalary.bankDetails || { bankName: '', accountNumber: '', ifsc: '' };
@@ -529,6 +532,7 @@ const PayrollProcessing: React.FC = () => {
                     type="text"
                     className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm text-slate-700 font-mono"
                     value={selectedEmpForSalary.bankDetails?.ifsc || ''}
+                    placeholder="IFSC Code"
                     onChange={(e) => {
                       const val = e.target.value;
                       const currentBank = selectedEmpForSalary.bankDetails || { bankName: '', accountNumber: '', ifsc: '' };

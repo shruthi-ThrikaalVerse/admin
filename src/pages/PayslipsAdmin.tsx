@@ -277,6 +277,7 @@ const PayslipsAdmin: React.FC = () => {
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600"
                 value={formData.month}
                 onChange={e => setFormData({ ...formData, month: e.target.value })}
+                title="Select period month"
               >
                 {months.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
@@ -287,6 +288,7 @@ const PayslipsAdmin: React.FC = () => {
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600"
                 value={formData.year}
                 onChange={e => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                title="Select period year"
               >
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -300,6 +302,7 @@ const PayslipsAdmin: React.FC = () => {
                 type="number" required
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-700"
                 value={formData.basic}
+                placeholder="Basic Salary"
                 onChange={e => setFormData({ ...formData, basic: parseFloat(e.target.value) || 0 })}
               />
             </div>
@@ -309,6 +312,7 @@ const PayslipsAdmin: React.FC = () => {
                 type="number" required
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-700"
                 value={formData.allowances}
+                placeholder="Allowances"
                 onChange={e => setFormData({ ...formData, allowances: parseFloat(e.target.value) || 0 })}
               />
             </div>
@@ -318,6 +322,7 @@ const PayslipsAdmin: React.FC = () => {
                 type="number" required
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-rose-700"
                 value={formData.deductions}
+                placeholder="Deductions"
                 onChange={e => setFormData({ ...formData, deductions: parseFloat(e.target.value) || 0 })}
               />
             </div>
