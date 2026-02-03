@@ -36,6 +36,10 @@ module.exports = {
       }
     },
   },
+  safelist: [
+    // Allow runtime-generated arbitrary width classes like w-[37%]
+    { pattern: /^w-\[\d+%\]$/ }
+  ],
   plugins: [
     function ({ addUtilities }) {
       addUtilities({
@@ -44,7 +48,13 @@ module.exports = {
           'scrollbar-color': 'rgba(15, 23, 42, 0.06) transparent'
         },
         '.custom-scrollbar::-webkit-scrollbar': { width: '10px', height: '10px' },
-        '.custom-scrollbar::-webkit-scrollbar-thumb': { background: 'rgba(15, 23, 42, 0.06)', 'border-radius': '9999px' }
+        '.custom-scrollbar::-webkit-scrollbar-thumb': { background: 'rgba(15, 23, 42, 0.06)', 'border-radius': '9999px' },
+        // Invisible scrollbar utility (keeps scrolling but hides the scrollbar)
+        '.invisible-scrollbar': {
+          '-ms-overflow-style': 'none', /* IE and Edge */
+          'scrollbar-width': 'none' /* Firefox */
+        },
+        '.invisible-scrollbar::-webkit-scrollbar': { display: 'none', width: '0', height: '0' }
       })
     }
   ],

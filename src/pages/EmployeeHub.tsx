@@ -11,24 +11,40 @@ const Icon = ({ name, className, onClick }: { name: string; className?: string; 
 
 const Modal = ({ isOpen, onClose, title, children }: any) => {
   if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
-      <div className="bg-white rounded-[32px] w-full max-w-2xl relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-        <div className="p-8 border-b flex items-center justify-between bg-white sticky top-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop with proper stacking */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200"
+        onClick={onClose}
+      />
+
+      {/* Modal container */}
+      <div className="relative z-50 bg-white rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+        <div className="p-8 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white rounded-t-[32px] z-10">
           <h2 className="text-2xl font-black text-slate-900">{title}</h2>
-          <button onClick={onClose} aria-label="Close" title="Close" className="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            title="Close"
+            className="p-3 hover:bg-slate-50 rounded-2xl transition-colors"
+          >
             <Icon name="X" className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-8 max-h-[80vh] overflow-y-auto custom-scrollbar">{children}</div>
+
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto invisible-scrollbar p-8">
+          {children}
+        </div>
       </div>
     </div>
   );
 };
 
 const EmployeeHub: React.FC = () => {
-  const { employees, addEmployee, deleteEmployee, updateEmployee } = useHRMS();
+  const { employees, addEmployee, deleteEmployee, updateEmployee, notify, addLog } = useHRMS();
   const [view, setView] = useState<'table' | 'grid'>('table');
   const [searchTerm, setSearchTerm] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -175,178 +191,236 @@ const EmployeeHub: React.FC = () => {
       'defaultPassword123';
   };
 
+  // Export currently filtered employees as CSV
+  const exportEmployees = () => {
+    try {
+      if (filteredEmployees.length === 0) {
+        notify('No employee records to export.', 'warning');
+        return;
+      }
+
+      const headers = ['Employee ID', 'Full Name', 'Email', 'Phone', 'Department', 'Designation', 'Location', 'Employment Type', 'Status', 'Onboard Date', 'Leave Balance', 'Avatar'];
+      const rows = filteredEmployees.map(emp => ([
+        emp.employeeId,
+        emp.fullName,
+        emp.email || '',
+        emp.phone || '',
+        emp.department,
+        emp.designation,
+        emp.location,
+        emp.employmentType,
+        emp.status,
+        emp.dateOfJoining,
+        String(emp.leaveBalance ?? ''),
+        emp.avatar || ''
+      ]));
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `Employees_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      notify(`Exported ${filteredEmployees.length} employee records.`, 'success');
+      addLog('Export', 'Employee', `Exported ${filteredEmployees.length} employee records.`);
+    } catch (e) {
+      console.error(e);
+      notify('Failed to export employees. See console for details.', 'error');
+    }
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 relative">
+      {/* Page Header with Export and Add Employee buttons */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Employee Directory</h1>
           <p className="text-slate-500 text-sm font-medium">Record keeping for {employees.length} verified persons.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 font-black text-xs uppercase tracking-widest shadow-sm transition-all">
+          <button onClick={exportEmployees} className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 font-black text-xs uppercase tracking-widest shadow-sm transition-all">
             <Icon name="Share2" className="w-4 h-4" /> Export
           </button>
           <button
             onClick={() => setAddModalOpen(true)}
             className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 transition-all active:scale-95"
           >
-            <Icon name="Plus" className="w-5 h-5" />Add Employee
+            <Icon name="Plus" className="w-5 h-5" />New Staff Enrollment
           </button>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
-        <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
-          <div className="flex items-center bg-slate-50 rounded-2xl p-1.5 border border-slate-100">
-            <button
-              onClick={() => setView('table')}
-              className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest ${view === 'table' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
-              <Icon name="List" className="w-4 h-4" /> Table
-            </button>
-            <button
-              onClick={() => setView('grid')}
-              className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest ${view === 'grid' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
-              <Icon name="LayoutGrid" className="w-4 h-4" /> Cards
-            </button>
-          </div>
-          <div className="flex flex-1 items-center gap-4 w-full max-w-3xl">
-            <div className="relative flex-1 group">
-              <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
-              <input
-                type="text"
-                aria-label="Search employees"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Lookup by name, ID, or keyword..."
-                className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-600"
-              />
+      {/* Main Content Container */}
+      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm">
+        {/* Fixed Header Section */}
+        <div className="sticky top-0 z-20 bg-white p-6 border-b border-slate-100 rounded-t-[32px] space-y-6">
+          {/* View Toggle and Search/Filter Controls */}
+          <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+            <div className="flex items-center bg-slate-50 rounded-2xl p-1.5 border border-slate-100">
+              <button
+                onClick={() => setView('table')}
+                className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest ${view === 'table' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="List" className="w-4 h-4" /> Table
+              </button>
+              <button
+                onClick={() => setView('grid')}
+                className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest ${view === 'grid' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="LayoutGrid" className="w-4 h-4" /> Cards
+              </button>
             </div>
-            <select
-              aria-label="Filter by department"
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              className="px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest text-slate-500"
-            >
-              <option value="All">All Departments</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div className="flex flex-1 items-center gap-4 w-full max-w-3xl">
+              <div className="relative flex-1 group">
+                <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+                <input
+                  type="text"
+                  aria-label="Search employees"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Lookup by name, ID, or keyword..."
+                  className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-600"
+                />
+              </div>
+              <select
+                aria-label="Filter by department"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest text-slate-500"
+              >
+                <option value="All">All Departments</option>
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
           </div>
+
+          {/* Table Headers (only shown in table view) */}
+          {view === 'table' && (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50/50">
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Employee Profile</th>
+                    <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                    <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">System Status</th>
+                    <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Leave Balance</th>
+                    <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
+                    <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Onboard Date</th>
+                    <th className="text-right py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+          )}
         </div>
 
-        {view === 'table' ? (
-          <div className="overflow-x-auto rounded-3xl border border-slate-50">
-            <table className="w-full">
-              <thead className="bg-slate-50/50">
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Employee Profile</th>
-                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">System Status</th>
-                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Leave Balance</th>
-                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Unit</th>
-                  <th className="text-left py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Onboard Date</th>
-                  <th className="text-right py-6 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }}>
-                    <td className="py-6 px-8">
-                      <div className="flex items-center gap-4">
-                        <img src={emp.avatar} className="w-12 h-12 rounded-2xl border-4 border-white shadow-sm transition-transform group-hover:scale-110" alt="" />
-                        <div>
-                          <p className="font-black text-slate-800 leading-none mb-1.5">{emp.fullName}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{emp.employeeId} • {emp.designation}</p>
+        {/* Scrollable Content Area */}
+        <div className={`overflow-y-auto invisible-scrollbar ${view === 'table' ? 'max-h-[calc(100vh-350px)]' : 'max-h-[calc(100vh-280px)]'}`}>
+          {view === 'table' ? (
+            <div className="overflow-x-auto invisible-scrollbar invisible-scrollbar">
+              <table className="w-full">
+                <tbody className="divide-y divide-slate-50">
+                  {filteredEmployees.map((emp) => (
+                    <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }}>
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-4">
+                          <img src={emp.avatar} className="w-12 h-12 rounded-2xl border-4 border-white shadow-sm transition-transform group-hover:scale-110" alt="" />
+                          <div>
+                            <p className="font-black text-slate-800 leading-none mb-1.5">{emp.fullName}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{emp.employeeId} • {emp.designation}</p>
+                          </div>
                         </div>
+                      </td>
+                      <td className="py-6 px-8">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          emp.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                            'bg-amber-50 text-amber-600 border-amber-100'
+                          }`}>
+                          {emp.employmentType}
+                        </span>
+                      </td>
+                      <td className="py-6 px-8">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                          }`}>
+                          {emp.status}
+                        </span>
+                      </td>
+                      <td className="py-6 px-8">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-black ${emp.leaveBalance < 5 ? 'text-rose-600' : 'text-slate-700'}`}>{emp.leaveBalance}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Days</span>
+                        </div>
+                      </td>
+                      <td className="py-6 px-8">
+                        <span className="text-xs font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg uppercase tracking-widest">{emp.department}</span>
+                      </td>
+                      <td className="py-6 px-8 text-xs font-bold text-slate-400 uppercase tracking-widest">{emp.dateOfJoining}</td>
+                      <td className="py-6 px-8 text-right">
+                        <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }} aria-label="View details" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-indigo-100">
+                            <Icon name="Eye" className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setEmployeeToDelete(emp)} aria-label="Delete employee" className="p-2 text-slate-400 hover:text-rose-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-rose-100">
+                            <Icon name="Trash2" className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 p-6">
+              {filteredEmployees.map((emp) => (
+                <div
+                  key={emp.id}
+                  onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }}
+                  className="bg-white border border-slate-100 rounded-[32px] p-6 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all group relative cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="relative">
+                      <img src={emp.avatar} className="w-16 h-16 rounded-[20px] object-cover border-4 border-slate-50 shadow-md group-hover:scale-105 transition-transform" alt="" />
+                      <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm ${emp.leaveBalance < 5 ? 'bg-rose-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
+                        {emp.leaveBalance}d Bal
                       </div>
-                    </td>
-                    <td className="py-6 px-8">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                        emp.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                          'bg-amber-50 text-amber-600 border-amber-100'
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEmployeeToDelete(emp); }}
+                      aria-label="Delete employee"
+                      className="p-2.5 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 rounded-xl"
+                    >
+                      <Icon name="Trash2" className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="mb-6">
+                    <h3 className="font-black text-slate-900 leading-tight text-lg mb-1">{emp.fullName}</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.employeeId}</p>
+                    <div className="mt-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${emp.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600' :
+                        emp.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600' :
+                          'bg-amber-50 text-amber-600'
                         }`}>
                         {emp.employmentType}
                       </span>
-                    </td>
-                    <td className="py-6 px-8">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                        }`}>
-                        {emp.status}
-                      </span>
-                    </td>
-                    <td className="py-6 px-8">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-black ${emp.leaveBalance < 5 ? 'text-rose-600' : 'text-slate-700'}`}>{emp.leaveBalance}</span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Days</span>
-                      </div>
-                    </td>
-                    <td className="py-6 px-8">
-                      <span className="text-xs font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg uppercase tracking-widest">{emp.department}</span>
-                    </td>
-                    <td className="py-6 px-8 text-xs font-bold text-slate-400 uppercase tracking-widest">{emp.dateOfJoining}</td>
-                    <td className="py-6 px-8 text-right">
-                      <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }} aria-label="View details" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-indigo-100">
-                          <Icon name="Eye" className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setEmployeeToDelete(emp)} aria-label="Delete employee" className="p-2 text-slate-400 hover:text-rose-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-rose-100">
-                          <Icon name="Trash2" className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {filteredEmployees.map((emp) => (
-              <div
-                key={emp.id}
-                onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }}
-                className="bg-white border border-slate-100 rounded-[32px] p-6 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all group relative cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-6">
-                  <div className="relative">
-                    <img src={emp.avatar} className="w-16 h-16 rounded-[20px] object-cover border-4 border-slate-50 shadow-md group-hover:scale-105 transition-transform" alt="" />
-                    <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm ${emp.leaveBalance < 5 ? 'bg-rose-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
-                      {emp.leaveBalance}d Bal
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setEmployeeToDelete(emp); }}
-                    aria-label="Delete employee"
-                    className="p-2.5 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 rounded-xl"
-                  >
-                    <Icon name="Trash2" className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="mb-6">
-                  <h3 className="font-black text-slate-900 leading-tight text-lg mb-1">{emp.fullName}</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.employeeId}</p>
-                  <div className="mt-2">
-                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${emp.employmentType === 'Full-time' ? 'bg-blue-50 text-blue-600' :
-                      emp.employmentType === 'Part-time' ? 'bg-purple-50 text-purple-600' :
-                        'bg-amber-50 text-amber-600'
-                      }`}>
-                      {emp.employmentType}
-                    </span>
+                  <div className="space-y-3">
+                    <div className="bg-slate-50 rounded-2xl p-4">
+                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Assignment</p>
+                      <p className="text-sm font-black text-slate-700 leading-none">{emp.designation}</p>
+                    </div>
+                    <div className="flex items-center justify-between px-2">
+                      <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{emp.department}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">{emp.location}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="bg-slate-50 rounded-2xl p-4">
-                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Assignment</p>
-                    <p className="text-sm font-black text-slate-700 leading-none">{emp.designation}</p>
-                  </div>
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{emp.department}</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">{emp.location}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Employee Detail Modal */}
@@ -522,7 +596,7 @@ const EmployeeHub: React.FC = () => {
         )}
       </Modal>
 
-      {/* Add Employee Form */}
+      {/* New Staff Enrollment Modal */}
       <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="New Staff Enrollment">
         <form onSubmit={handleAddSubmit} className="space-y-6">
           {/* Profile Photo Upload */}

@@ -13,10 +13,8 @@ const LayoutWrapper: React.FC<{ children?: React.ReactNode }> = ({ children }) =
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <div className="lg:ml-64 flex flex-col min-h-screen">
         <Header setOpen={setSidebarOpen} />
-        <main className="flex-1 p-4 lg:p-8">
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto invisible-scrollbar">
+          {children}
         </main>
       </div>
       <NotificationToast />
