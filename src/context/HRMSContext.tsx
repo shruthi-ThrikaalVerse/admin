@@ -31,6 +31,13 @@ import {
   mockPerformanceCycles as initialPerformanceCycles
 } from '../mockData';
 
+// Add ProfilePhoto interface
+interface ProfilePhoto {
+  userId: string;
+  photoUrl: string;
+  uploadedAt: string;
+}
+
 interface HRMSContextType {
   employees: EmployeeSummary[];
   leaves: LeaveRequest[];
@@ -47,6 +54,7 @@ interface HRMSContextType {
   adminNotifications: AdminNotification[];
   events: AppEvent[];
   notifications: Notification[];
+  profilePhotos: ProfilePhoto[];
   globalSearchTerm: string;
   setGlobalSearchTerm: (val: string) => void;
   addEmployee: (emp: Partial<EmployeeSummary>) => void;
@@ -76,6 +84,9 @@ interface HRMSContextType {
   addLog: (action: string, module: string, details: string) => void;
   notify: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
   dismissNotification: (id: string) => void;
+  updateProfilePhoto: (userId: string, photoUrl: string) => void;
+  removeProfilePhoto: (userId: string) => void;
+  getProfilePhoto: (userId: string) => string | null;
 }
 
 const HRMSContext = createContext<HRMSContextType | undefined>(undefined);
@@ -115,7 +126,8 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       tasks: [],
       customTeams: [],
       adminNotifications: [],
-      events: []
+      events: [],
+      profilePhotos: []
     };
 
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -137,6 +149,7 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           customTeams: Array.isArray(parsed.customTeams) ? parsed.customTeams : defaults.customTeams,
           adminNotifications: Array.isArray(parsed.adminNotifications) ? parsed.adminNotifications : defaults.adminNotifications,
           events: Array.isArray(parsed.events) ? parsed.events : defaults.events,
+          profilePhotos: Array.isArray(parsed.profilePhotos) ? parsed.profilePhotos : defaults.profilePhotos,
         };
       } catch (e) {
         console.error("Error parsing HRMS data from localStorage", e);
@@ -162,14 +175,19 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [customTeams, setCustomTeams] = useState<CustomTeam[]>(initialData.customTeams);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>(initialData.adminNotifications);
   const [events, setEvents] = useState<AppEvent[]>(initialData.events);
+  const [profilePhotos, setProfilePhotos] = useState<ProfilePhoto[]>(initialData.profilePhotos);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      employees, leaves, activities, attendance, stats, payroll, goals, performanceCycles, logs, payslips, tasks, customTeams, adminNotifications, events
+      employees, leaves, activities, attendance, stats, payroll, goals,
+      performanceCycles, logs, payslips, tasks, customTeams,
+      adminNotifications, events, profilePhotos
     }));
-  }, [employees, leaves, activities, attendance, stats, payroll, goals, performanceCycles, logs, payslips, tasks, customTeams, adminNotifications, events]);
+  }, [employees, leaves, activities, attendance, stats, payroll, goals,
+    performanceCycles, logs, payslips, tasks, customTeams,
+    adminNotifications, events, profilePhotos]);
 
   const dismissNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -183,7 +201,7 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       message,
       timestamp: new Date().toLocaleTimeString()
     };
-    
+
     setNotifications(prev => {
       const next = [newNotify, ...prev];
       return next.slice(0, 5);
@@ -206,6 +224,34 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     setLogs(prev => [newLog, ...prev]);
   }, []);
+
+  // Profile Photo Functions
+  const updateProfilePhoto = useCallback((userId: string, photoUrl: string) => {
+    setProfilePhotos(prev => {
+      // Remove existing photo for this user
+      const filtered = prev.filter(photo => photo.userId !== userId);
+      // Add new photo
+      const newPhoto: ProfilePhoto = {
+        userId,
+        photoUrl,
+        uploadedAt: new Date().toISOString()
+      };
+      return [newPhoto, ...filtered];
+    });
+    notify('Profile photo updated successfully', 'success');
+    addLog('Update', 'Profile', 'Uploaded new profile photo');
+  }, [addLog, notify]);
+
+  const removeProfilePhoto = useCallback((userId: string) => {
+    setProfilePhotos(prev => prev.filter(photo => photo.userId !== userId));
+    notify('Profile photo removed', 'info');
+    addLog('Update', 'Profile', 'Removed profile photo');
+  }, [addLog, notify]);
+
+  const getProfilePhoto = useCallback((userId: string): string | null => {
+    const photo = profilePhotos.find(photo => photo.userId === userId);
+    return photo ? photo.photoUrl : null;
+  }, [profilePhotos]);
 
   const addEmployee = (emp: Partial<EmployeeSummary>) => {
     const maxIdNum = employees.reduce((max, e) => {
@@ -251,7 +297,7 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       },
       ...emp
     };
-    
+
     setEmployees(prev => [newEmp, ...prev]);
     addLog('Create', 'Employee', `Registered employee ${newEmp.fullName} with ID ${newEmp.employeeId}`);
     notify(`Employee ${newEmp.fullName} added successfully!`);
@@ -307,7 +353,7 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         attendanceSummary: { present: 22, absent: 0, totalDays: 22 }
       };
     });
-    
+
     setPayslips(prev => [...generatedPayslips, ...prev]);
     const newRun: PayrollRun = {
       id: `p-${Date.now()}`,
@@ -446,7 +492,7 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     setPayslips(prev => [newPs, ...prev]);
     addLog('Create', 'Payslip', `Generated payslip for ${newPs.name} - ${newPs.month} ${newPs.year}`);
-    
+
     if (newPs.status === 'sent') {
       addAdminNotification({
         title: 'New Payslip Available',
@@ -544,7 +590,7 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <HRMSContext.Provider value={{ 
+    <HRMSContext.Provider value={{
       employees: employees || [],
       leaves: leaves || [],
       activities: activities || [],
@@ -560,13 +606,39 @@ export const HRMSProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       adminNotifications: adminNotifications || [],
       events: events || [],
       notifications: notifications || [],
-      globalSearchTerm, setGlobalSearchTerm,
-      addEmployee, updateEmployee, deleteEmployee, updateLeaveStatus, runPayroll, updateSalaryStructure, addPerformanceCycle, 
-      addTask, updateTaskStatus, deleteTask, addCustomTeam, updateCustomTeam, deleteCustomTeam,
-      addAdminNotification, updateAdminNotification, deleteAdminNotification, markNotificationAsRead,
-      addEvent, updateEvent, deleteEvent, toggleEventParticipation,
-      addPayslip, updatePayslip, deletePayslip,
-      addLog, notify, dismissNotification
+      profilePhotos: profilePhotos || [],
+      globalSearchTerm,
+      setGlobalSearchTerm,
+      addEmployee,
+      updateEmployee,
+      deleteEmployee,
+      updateLeaveStatus,
+      runPayroll,
+      updateSalaryStructure,
+      addPerformanceCycle,
+      addTask,
+      updateTaskStatus,
+      deleteTask,
+      addCustomTeam,
+      updateCustomTeam,
+      deleteCustomTeam,
+      addAdminNotification,
+      updateAdminNotification,
+      deleteAdminNotification,
+      markNotificationAsRead,
+      addEvent,
+      updateEvent,
+      deleteEvent,
+      toggleEventParticipation,
+      addPayslip,
+      updatePayslip,
+      deletePayslip,
+      addLog,
+      notify,
+      dismissNotification,
+      updateProfilePhoto,
+      removeProfilePhoto,
+      getProfilePhoto
     }}>
       {children}
     </HRMSContext.Provider>

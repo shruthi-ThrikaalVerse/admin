@@ -36,9 +36,11 @@ const LeaveCenter: React.FC = () => {
   const formatDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return {
       month: months[date.getMonth()],
-      day: date.getDate()
+      day: date.getDate(),
+      weekday: days[date.getDay()]
     };
   };
 
@@ -50,18 +52,18 @@ const LeaveCenter: React.FC = () => {
           <p className="text-gray-500 text-sm">Review and manage leave applications.</p>
         </div>
         <div className="flex items-center bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-           <button 
-             onClick={() => setActiveTab('pending')}
-             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'pending' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-900'}`}
-           >
-             Queue ({pendingLeaves.length})
-           </button>
-           <button 
-             onClick={() => setActiveTab('history')}
-             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-900'}`}
-           >
-             History
-           </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'pending' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-900'}`}
+          >
+            Pending ({pendingLeaves.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-900'}`}
+          >
+            History
+          </button>
         </div>
       </div>
 
@@ -80,11 +82,10 @@ const LeaveCenter: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                    req.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${req.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
                     req.status === 'approved' ? 'bg-green-50 text-green-600 border border-green-100' :
-                    'bg-red-50 text-red-600 border border-red-100'
-                  }`}>
+                      'bg-red-50 text-red-600 border border-red-100'
+                    }`}>
                     {req.status}
                   </span>
                   <p className="text-[10px] font-bold text-gray-400 uppercase">{req.leaveType} Leave</p>
@@ -103,8 +104,8 @@ const LeaveCenter: React.FC = () => {
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Duration</p>
                   <div className="flex items-center gap-1">
-                     <p className="text-sm font-bold text-gray-900">{req.days}</p>
-                     <span className="text-[10px] text-gray-400 font-medium uppercase">Working Days</span>
+                    <p className="text-sm font-bold text-gray-900">{req.days}</p>
+                    <span className="text-[10px] text-gray-400 font-medium uppercase">Working Days</span>
                   </div>
                 </div>
               </div>
@@ -117,13 +118,13 @@ const LeaveCenter: React.FC = () => {
               <div className="flex items-center gap-3 pt-4 border-t border-gray-50">
                 {req.status === 'pending' ? (
                   <>
-                    <button 
+                    <button
                       onClick={() => updateLeaveStatus(req.id, 'approved')}
                       className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all uppercase text-xs"
                     >
                       Approve Leave
                     </button>
-                    <button 
+                    <button
                       onClick={() => updateLeaveStatus(req.id, 'rejected')}
                       className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all uppercase text-xs"
                     >
@@ -131,7 +132,7 @@ const LeaveCenter: React.FC = () => {
                     </button>
                   </>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => updateLeaveStatus(req.id, 'pending')}
                     className="flex-1 py-3 bg-white border border-gray-200 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-all uppercase text-xs flex items-center justify-center gap-2"
                   >
@@ -143,39 +144,52 @@ const LeaveCenter: React.FC = () => {
             </div>
           )) : (
             <div className="bg-white border border-dashed border-gray-300 rounded-3xl p-20 flex flex-col items-center justify-center text-center">
-               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                 <Icon name="SearchX" className="w-8 h-8 text-gray-300" />
-               </div>
-               <h3 className="text-lg font-bold text-gray-900">No requests found</h3>
-               <p className="text-sm text-gray-400 max-w-xs mt-1">There are currently no {activeTab} leave applications to display.</p>
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                <Icon name="SearchX" className="w-8 h-8 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">No requests found</h3>
+              <p className="text-sm text-gray-400 max-w-xs mt-1">There are currently no {activeTab} leave applications to display.</p>
             </div>
           )}
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center justify-between">
-              Upcoming Holidays
-              <Icon name="Info" className="w-4 h-4 text-gray-300" />
-            </h2>
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm h-fit">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-900">Upcoming Holidays</h2>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                {SYSTEM_HOLIDAYS.length} Total
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-2">
               {SYSTEM_HOLIDAYS.map((h, i) => {
                 const label = formatDateLabel(h.date);
                 return (
-                  <div key={i} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-2xl transition-all group">
-                    <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center font-bold bg-blue-50 text-blue-500">
-                      <span className="text-[10px] uppercase leading-none">{label.month}</span>
-                      <span className="text-lg leading-tight">{label.day}</span>
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-all group border border-transparent hover:border-gray-100"
+                  >
+                    <div className="min-w-14 h-14 rounded-xl flex flex-col items-center justify-center font-bold bg-blue-50 text-blue-500 border border-blue-100">
+                      <span className="text-[10px] uppercase leading-none font-bold tracking-wider">{label.month}</span>
+                      <span className="text-lg leading-tight font-bold">{label.day}</span>
+                      <span className="text-[9px] text-blue-400 font-medium mt-[-2px]">{label.weekday}</span>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{h.name}</p>
-                      <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">2026</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                        {h.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-gray-400">2026</span>
+                        <span className="text-[10px] text-blue-400 font-medium bg-blue-50 px-1.5 py-0.5 rounded">
+                          Public Holiday
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <button className="w-full mt-6 py-3 border border-gray-100 rounded-xl text-xs font-bold text-gray-400 uppercase tracking-widest hover:bg-gray-50 transition-colors">Calendar Settings</button>
           </div>
         </div>
       </div>

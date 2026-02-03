@@ -3,12 +3,12 @@ import * as LucideIcons from 'lucide-react';
 import { useHRMS } from '../context/HRMSContext';
 import { EmployeeSummary } from '../types';
 import { DEPARTMENTS, LOCATIONS } from '../constants';
- 
-const Icon = ({ name, className }: { name: string; className?: string }) => {
+
+const Icon = ({ name, className, onClick }: { name: string; className?: string; onClick?: () => void }) => {
   const LucideIcon = (LucideIcons as any)[name];
-  return LucideIcon ? <LucideIcon className={className} /> : null;
+  return LucideIcon ? <LucideIcon className={className} onClick={onClick} /> : null;
 };
- 
+
 const Modal = ({ isOpen, onClose, title, children }: any) => {
   if (!isOpen) return null;
   return (
@@ -17,7 +17,7 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
       <div className="bg-white rounded-[32px] w-full max-w-xl relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         <div className="p-8 border-b flex items-center justify-between bg-white sticky top-0">
           <h2 className="text-2xl font-black text-slate-900">{title}</h2>
-          <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
+          <button onClick={onClose} aria-label="Close" title="Close" className="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
             <Icon name="X" className="w-6 h-6" />
           </button>
         </div>
@@ -26,7 +26,7 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
     </div>
   );
 };
- 
+
 const EmployeeHub: React.FC = () => {
   const { employees, addEmployee, deleteEmployee, updateEmployee } = useHRMS();
   const [view, setView] = useState<'table' | 'grid'>('table');
@@ -36,32 +36,44 @@ const EmployeeHub: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSummary | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeSummary | null>(null);
   const [showPassword, setShowPassword] = useState(false);
- 
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
   const [newEmp, setNewEmp] = useState({
     fullName: '',
     designation: '',
     department: DEPARTMENTS[0],
     email: '',
     location: LOCATIONS[0],
-    password: ''
+    password: 'defaultPassword123' // Set a default password
   });
- 
+
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
       const matchesSearch = emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
+        emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDept = deptFilter === 'All' || emp.department === deptFilter;
       return matchesSearch && matchesDept;
     });
   }, [employees, searchTerm, deptFilter]);
- 
+
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addEmployee(newEmp);
+    // Ensure password is included when adding employee
+    addEmployee({
+      ...newEmp,
+      password: newEmp.password || generatePassword() // Make sure password is set
+    });
     setAddModalOpen(false);
-    setNewEmp({ fullName: '', designation: '', department: DEPARTMENTS[0], email: '', location: LOCATIONS[0], password: '' });
+    setNewEmp({
+      fullName: '',
+      designation: '',
+      department: DEPARTMENTS[0],
+      email: '',
+      location: LOCATIONS[0],
+      password: 'defaultPassword123'
+    });
   };
- 
+
   const generatePassword = () => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
     let retVal = "";
@@ -69,21 +81,42 @@ const EmployeeHub: React.FC = () => {
       retVal += charset.charAt(Math.floor(Math.random() * n));
     }
     setNewEmp({ ...newEmp, password: retVal });
+    return retVal; // Return the generated password
   };
- 
+
   const confirmDelete = () => {
     if (employeeToDelete) {
       deleteEmployee(employeeToDelete.id);
       setEmployeeToDelete(null);
     }
   };
- 
+
+  const handleCopy = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+  };
+
+  // Get the password for the selected employee
+  const getEmployeePassword = (emp: EmployeeSummary | null) => {
+    if (!emp) return 'No password set';
+
+    // Try to get password from different possible sources
+    return emp.password ||
+      (emp as any).systemPassword ||
+      'defaultPassword123';
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Employee Repository</h1>
-          <p className="text-slate-500 text-sm font-medium">Record keeping for {employees.length} verified personnel.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Employee Directory</h1>
+          <p className="text-slate-500 text-sm font-medium">Record keeping for {employees.length} verified persons.</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 px-6 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 font-black text-xs uppercase tracking-widest shadow-sm transition-all">
@@ -93,11 +126,11 @@ const EmployeeHub: React.FC = () => {
             onClick={() => setAddModalOpen(true)}
             className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 transition-all active:scale-95"
           >
-            <Icon name="Plus" className="w-5 h-5" /> Add Employee
+            <Icon name="Plus" className="w-5 h-5" />Add Employee
           </button>
         </div>
       </div>
- 
+
       <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
         <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
           <div className="flex items-center bg-slate-50 rounded-2xl p-1.5 border border-slate-100">
@@ -117,6 +150,7 @@ const EmployeeHub: React.FC = () => {
               <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
+                aria-label="Search employees"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Lookup by name, ID, or keyword..."
@@ -124,6 +158,7 @@ const EmployeeHub: React.FC = () => {
               />
             </div>
             <select
+              aria-label="Filter by department"
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
               className="px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest text-slate-500"
@@ -133,7 +168,7 @@ const EmployeeHub: React.FC = () => {
             </select>
           </div>
         </div>
- 
+
         {view === 'table' ? (
           <div className="overflow-x-auto rounded-3xl border border-slate-50">
             <table className="w-full">
@@ -160,9 +195,8 @@ const EmployeeHub: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-6 px-8">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                        emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
                         {emp.status}
                       </span>
                     </td>
@@ -173,15 +207,15 @@ const EmployeeHub: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-6 px-8">
-                       <span className="text-xs font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg uppercase tracking-widest">{emp.department}</span>
+                      <span className="text-xs font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-lg uppercase tracking-widest">{emp.department}</span>
                     </td>
                     <td className="py-6 px-8 text-xs font-bold text-slate-400 uppercase tracking-widest">{emp.dateOfJoining}</td>
                     <td className="py-6 px-8 text-right">
                       <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-indigo-100">
+                        <button onClick={() => { setSelectedEmployee(emp); setShowPassword(false); }} aria-label="View details" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-indigo-100">
                           <Icon name="Eye" className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setEmployeeToDelete(emp)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-rose-100">
+                        <button onClick={() => setEmployeeToDelete(emp)} aria-label="Delete employee" className="p-2 text-slate-400 hover:text-rose-600 hover:bg-white rounded-xl shadow-sm transition-all border border-transparent hover:border-rose-100">
                           <Icon name="Trash2" className="w-4 h-4" />
                         </button>
                       </div>
@@ -200,131 +234,170 @@ const EmployeeHub: React.FC = () => {
                 className="bg-white border border-slate-100 rounded-[32px] p-6 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all group relative cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-6">
-                   <div className="relative">
-                      <img src={emp.avatar} className="w-16 h-16 rounded-[20px] object-cover border-4 border-slate-50 shadow-md group-hover:scale-105 transition-transform" alt="" />
-                      <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm ${emp.leaveBalance < 5 ? 'bg-rose-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
-                        {emp.leaveBalance}d Bal
-                      </div>
-                   </div>
-                   <button
-                     onClick={(e) => { e.stopPropagation(); setEmployeeToDelete(emp); }}
-                     className="p-2.5 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 rounded-xl"
-                   >
-                     <Icon name="Trash2" className="w-4 h-4" />
-                   </button>
+                  <div className="relative">
+                    <img src={emp.avatar} className="w-16 h-16 rounded-[20px] object-cover border-4 border-slate-50 shadow-md group-hover:scale-105 transition-transform" alt="" />
+                    <div className={`absolute -top-2 -right-2 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm ${emp.leaveBalance < 5 ? 'bg-rose-500 text-white' : 'bg-white text-slate-400 border border-slate-100'}`}>
+                      {emp.leaveBalance}d Bal
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEmployeeToDelete(emp); }}
+                    aria-label="Delete employee"
+                    className="p-2.5 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 rounded-xl"
+                  >
+                    <Icon name="Trash2" className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="mb-6">
-                   <h3 className="font-black text-slate-900 leading-tight text-lg mb-1">{emp.fullName}</h3>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.employeeId}</p>
+                  <h3 className="font-black text-slate-900 leading-tight text-lg mb-1">{emp.fullName}</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{emp.employeeId}</p>
                 </div>
                 <div className="space-y-3">
-                   <div className="bg-slate-50 rounded-2xl p-4">
-                     <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Assignment</p>
-                     <p className="text-sm font-black text-slate-700 leading-none">{emp.designation}</p>
-                   </div>
-                   <div className="flex items-center justify-between px-2">
-                      <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{emp.department}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">{emp.location}</span>
-                   </div>
+                  <div className="bg-slate-50 rounded-2xl p-4">
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Assignment</p>
+                    <p className="text-sm font-black text-slate-700 leading-none">{emp.designation}</p>
+                  </div>
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{emp.department}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">{emp.location}</span>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
- 
-      {/* Employee Detail Slide-over/Modal */}
-      <Modal isOpen={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} title="Personnel Profile">
+
+      {/* Employee Detail Modal */}
+      <Modal isOpen={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} title="Personal Profile">
         {selectedEmployee && (
           <div className="space-y-8">
-             <div className="flex flex-col items-center text-center">
-                <img src={selectedEmployee.avatar} className="w-24 h-24 rounded-3xl border-8 border-slate-50 shadow-xl mb-4" alt="" />
-                <h3 className="text-2xl font-black text-slate-900">{selectedEmployee.fullName}</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedEmployee.employeeId} • {selectedEmployee.designation}</p>
-                <div className="mt-4 flex gap-2">
-                   <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">{selectedEmployee.department}</span>
-                   <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">{selectedEmployee.status}</span>
+            <div className="flex flex-col items-center text-center">
+              <img src={selectedEmployee.avatar} className="w-24 h-24 rounded-3xl border-8 border-slate-50 shadow-xl mb-4" alt="" />
+              <h3 className="text-2xl font-black text-slate-900">{selectedEmployee.fullName}</h3>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedEmployee.employeeId} • {selectedEmployee.designation}</p>
+              <div className="mt-4 flex gap-2">
+                <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">{selectedEmployee.department}</span>
+                <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">{selectedEmployee.status}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Work Contact</p>
+                <p className="text-sm font-bold text-slate-700 truncate">{selectedEmployee.email}</p>
+                <p className="text-[10px] font-bold text-slate-400 mt-1">{selectedEmployee.phone || 'No direct line'}</p>
+              </div>
+              <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Primary Location</p>
+                <p className="text-sm font-bold text-slate-700">{selectedEmployee.location}</p>
+                <p className="text-[10px] font-bold text-slate-400 mt-1">Onboarded: {selectedEmployee.dateOfJoining}</p>
+              </div>
+            </div>
+
+            <div className="bg-indigo-600 p-6 rounded-[32px] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
+              <div className="absolute right-0 bottom-0 opacity-10 group-hover:scale-110 transition-transform">
+                <Icon name="ShieldCheck" className="w-32 h-32" />
+              </div>
+              <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70">Employee Access Credentials</h4>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div className="flex-1">
+                    <p className="text-[9px] font-bold uppercase opacity-50">Username / Email</p>
+                    <p className="text-sm font-black tracking-tight truncate">{selectedEmployee.email}</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopy(selectedEmployee.email, 'email');
+                    }}
+                    aria-label="Copy username"
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
+                  >
+                    <Icon name={copiedField === 'email' ? "Check" : "Copy"} className="w-4 h-4" />
+                    {copiedField === 'email' && (
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white text-indigo-600 text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap">
+                        Copied!
+                      </span>
+                    )}
+                  </button>
                 </div>
-             </div>
- 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Work Contact</p>
-                   <p className="text-sm font-bold text-slate-700 truncate">{selectedEmployee.email}</p>
-                   <p className="text-[10px] font-bold text-slate-400 mt-1">{selectedEmployee.phone || 'No direct line'}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-[9px] font-bold uppercase opacity-50">System Password</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-black tracking-widest">
+                        {showPassword ? getEmployeePassword(selectedEmployee) : '••••••••••••'}
+                      </p>
+                      {showPassword && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopy(getEmployeePassword(selectedEmployee), 'password');
+                          }}
+                          aria-label="Copy password"
+                          className="p-1 hover:bg-white/10 rounded transition-colors relative"
+                        >
+                          <Icon name={copiedField === 'password' ? "Check" : "Copy"} className="w-3 h-3" />
+                          {copiedField === 'password' && (
+                            <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-white text-indigo-600 text-[9px] font-black px-2 py-1 rounded-lg whitespace-nowrap">
+                              Copied!
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPassword(!showPassword);
+                    }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Icon name={showPassword ? "EyeOff" : "Eye"} className="w-4 h-4" />
+                    <span className="text-[9px] font-bold uppercase opacity-70">
+                      {showPassword ? "Hide" : "Show"}
+                    </span>
+                  </button>
                 </div>
-                <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Primary Location</p>
-                   <p className="text-sm font-bold text-slate-700">{selectedEmployee.location}</p>
-                   <p className="text-[10px] font-bold text-slate-400 mt-1">Onboarded: {selectedEmployee.dateOfJoining}</p>
-                </div>
-             </div>
- 
-             <div className="bg-indigo-600 p-6 rounded-[32px] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 opacity-10 group-hover:scale-110 transition-transform">
-                   <Icon name="ShieldCheck" className="w-32 h-32" />
-                </div>
-                <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70">Employee Access Credentials</h4>
-                <div className="space-y-4">
-                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <div>
-                         <p className="text-[9px] font-bold uppercase opacity-50">Username / Email</p>
-                         <p className="text-sm font-black tracking-tight">{selectedEmployee.email}</p>
-                      </div>
-                      <button className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Icon name="Copy" className="w-4 h-4" /></button>
-                   </div>
-                   <div className="flex items-center justify-between">
-                      <div>
-                         <p className="text-[9px] font-bold uppercase opacity-50">Login Password</p>
-                         <div className="flex items-center gap-2">
-                            <p className="text-sm font-black tracking-widest">
-                               {showPassword ? selectedEmployee.password : '••••••••••••'}
-                            </p>
-                         </div>
-                      </div>
-                      <button
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                      >
-                         <Icon name={showPassword ? "EyeOff" : "Eye"} className="w-4 h-4" />
-                      </button>
-                   </div>
-                </div>
-             </div>
- 
-             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave Bal</p>
-                    <p className="text-2xl font-black text-slate-800">{selectedEmployee.leaveBalance} <span className="text-xs font-bold text-slate-400">days</span></p>
-                </div>
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Supervisor</p>
-                    <p className="text-sm font-black text-slate-800 truncate">{selectedEmployee.reportingManager}</p>
-                </div>
-             </div>
- 
-             <div className="pt-4 flex gap-4">
-                <button
-                  onClick={() => {
-                    const nextStatus = selectedEmployee.status === 'active' ? 'inactive' : 'active';
-                    updateEmployee(selectedEmployee.id, { status: nextStatus as any });
-                    setSelectedEmployee(prev => prev ? {...prev, status: nextStatus as any} : null);
-                  }}
-                  className="flex-1 py-4 bg-white border-2 border-slate-100 text-slate-700 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
-                >
-                  Change Status
-                </button>
-                <button
-                  onClick={() => { setEmployeeToDelete(selectedEmployee); setSelectedEmployee(null); }}
-                  className="flex-1 py-4 bg-rose-50 text-rose-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-100 transition-all"
-                >
-                  Terminate
-                </button>
-             </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Leave Bal</p>
+                <p className="text-2xl font-black text-slate-800">{selectedEmployee.leaveBalance} <span className="text-xs font-bold text-slate-400">days</span></p>
+              </div>
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Supervisor</p>
+                <p className="text-sm font-black text-slate-800 truncate">{selectedEmployee.reportingManager}</p>
+              </div>
+            </div>
+
+            <div className="pt-4 flex gap-4">
+              <button
+                onClick={() => {
+                  const nextStatus = selectedEmployee.status === 'active' ? 'inactive' : 'active';
+                  updateEmployee(selectedEmployee.id, { status: nextStatus as any });
+                  setSelectedEmployee(prev => prev ? { ...prev, status: nextStatus as any } : null);
+                }}
+                className="flex-1 py-4 bg-white border-2 border-slate-100 text-slate-700 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+              >
+                Change Status
+              </button>
+              <button
+                onClick={() => { setEmployeeToDelete(selectedEmployee); setSelectedEmployee(null); }}
+                className="flex-1 py-4 bg-rose-50 text-rose-600 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-rose-100 transition-all"
+              >
+                Terminate
+              </button>
+            </div>
           </div>
         )}
       </Modal>
- 
+
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={!!employeeToDelete}
@@ -342,7 +415,7 @@ const EmployeeHub: React.FC = () => {
                 You are about to terminate the profile of <span className="text-slate-900 font-black">{employeeToDelete.fullName}</span> ({employeeToDelete.employeeId}). This action is permanent.
               </p>
             </div>
-           
+
             <div className="flex gap-4">
               <button
                 onClick={() => setEmployeeToDelete(null)}
@@ -361,89 +434,110 @@ const EmployeeHub: React.FC = () => {
           </div>
         )}
       </Modal>
- 
+
       {/* Add Employee Form */}
       <Modal isOpen={isAddModalOpen} onClose={() => setAddModalOpen(false)} title="New Staff Enrollment">
         <form onSubmit={handleAddSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+              <label htmlFor="newEmpFullName" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
               <input
+                id="newEmpFullName"
                 required
                 className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
                 placeholder="John Doe"
                 value={newEmp.fullName}
-                onChange={e => setNewEmp({...newEmp, fullName: e.target.value})}
+                onChange={e => setNewEmp({ ...newEmp, fullName: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Domain</label>
+              <label htmlFor="newEmpEmail" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Domain</label>
               <input
+                id="newEmpEmail"
                 required
                 type="email"
                 className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 placeholder:text-slate-300"
                 placeholder="john.doe@company.com"
                 value={newEmp.email}
-                onChange={e => setNewEmp({...newEmp, email: e.target.value})}
+                onChange={e => setNewEmp({ ...newEmp, email: e.target.value })}
               />
             </div>
           </div>
-         
+
           {/* Login Credentials Section */}
           <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 space-y-4">
-             <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Initial Access Configuration</h4>
-             <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">System Password</label>
-                <div className="relative">
-                   <input
-                     required
-                     className="w-full pl-6 pr-24 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm tracking-widest text-slate-700"
-                     value={newEmp.password}
-                     onChange={e => setNewEmp({...newEmp, password: e.target.value})}
-                     placeholder="••••••••"
-                   />
-                   <button
-                     type="button"
-                     onClick={generatePassword}
-                     className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:bg-indigo-100 transition-colors"
-                   >
-                     Auto-Generate
-                   </button>
+            <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Initial Access Configuration</h4>
+            <div className="space-y-2">
+              <label htmlFor="newEmpPassword" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">System Password</label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    id="newEmpPassword"
+                    required
+                    className="w-full pl-6 pr-24 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm tracking-widest text-slate-700"
+                    value={newEmp.password}
+                    onChange={e => setNewEmp({ ...newEmp, password: e.target.value })}
+                    placeholder="••••••••"
+                    type="text"
+                  />
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-tighter hover:bg-indigo-100 transition-colors"
+                  >
+                    Auto-Generate
+                  </button>
                 </div>
-                <p className="text-[10px] text-slate-400 italic px-1">Note: Provide these credentials to the employee for their first login.</p>
-             </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Show password in the input field
+                    const passwordInput = document.getElementById('newEmpPassword') as HTMLInputElement;
+                    if (passwordInput) {
+                      passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+                    }
+                  }}
+                  aria-label="Toggle password visibility"
+                  className="p-4 bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 rounded-2xl transition-colors"
+                >
+                  <Icon name="Eye" className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 italic px-1">Note: Provide these credentials to the employee for their first login.</p>
+            </div>
           </div>
- 
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Cluster</label>
+              <label htmlFor="newEmpDepartment" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Cluster</label>
               <select
+                id="newEmpDepartment"
                 className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-[10px] uppercase tracking-widest text-slate-500"
                 value={newEmp.department}
-                onChange={e => setNewEmp({...newEmp, department: e.target.value})}
+                onChange={e => setNewEmp({ ...newEmp, department: e.target.value })}
               >
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Designation</label>
+              <label htmlFor="newEmpDesignation" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Designation</label>
               <input
+                id="newEmpDesignation"
                 required
                 className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
                 value={newEmp.designation}
-                onChange={e => setNewEmp({...newEmp, designation: e.target.value})}
+                onChange={e => setNewEmp({ ...newEmp, designation: e.target.value })}
               />
             </div>
           </div>
           <div className="pt-6 border-t border-slate-100 flex gap-4">
-             <button type="button" onClick={() => setAddModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Abort</button>
-             <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Commit Enrollment</button>
+            <button type="button" onClick={() => setAddModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Abort</button>
+            <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Commit Enrollment</button>
           </div>
         </form>
       </Modal>
     </div>
   );
 };
- 
-export default EmployeeHub;
 
+export default EmployeeHub;
