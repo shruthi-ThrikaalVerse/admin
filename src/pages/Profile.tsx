@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useHRMS } from '../context/HRMSContext';
@@ -10,17 +10,106 @@ const Icon = ({ name, className }: { name: string; className?: string }) => {
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const { logs, notify } = useHRMS();
+  const { logs, notify, profilePhotos, updateProfilePhoto, removeProfilePhoto } = useHRMS();
   const [activeTab, setActiveTab] = useState<'details' | 'security' | 'activity'>('details');
 
   // Security States
   const [isMfaEnabled, setIsMfaEnabled] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Profile Photo State
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get profile photo from context or use default
+  const userProfilePhoto = user ? profilePhotos[user.id] : null;
+
   // Filter logs for current user
   const userLogs = useMemo(() => {
     return logs.filter(log => log.user === user?.fullName || log.user === 'Super Admin').slice(0, 10);
   }, [logs, user]);
+
+  // Get current date in correct format
+  const getCurrentDate = () => {
+    const now = new Date();
+    return now.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).replace(',', '');
+  };
+
+  // Get current time in 12-hour format
+  const getCurrentTime = () => {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  // Get formatted timestamp for "Last Sync"
+  const getLastSync = () => {
+    const now = new Date();
+    const day = now.getDate();
+    const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
+
+    // Format: "Today, 2nd Jan, 09:45 AM"
+    return `Today, ${day}${suffix} ${now.toLocaleDateString('en-US', { month: 'short' })}, ${getCurrentTime()}`;
+  };
+
+  // Handle profile photo upload
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      notify('Please upload an image file', 'error');
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      notify('Image size should be less than 5MB', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+
+    // Create a FileReader to read the file
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        // Store the photo URL in context
+        updateProfilePhoto(user.id, e.target.result as string);
+        setIsUploading(false);
+
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+    reader.onerror = () => {
+      setIsUploading(false);
+      notify('Failed to upload image', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Remove profile photo
+  const handleRemovePhoto = () => {
+    if (user) {
+      removeProfilePhoto(user.id);
+    }
+  };
+
+  // Trigger file input click
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handlePasswordUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,11 +120,104 @@ const Profile: React.FC = () => {
     <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
       <div className="flex items-center gap-4 mb-2">
         <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-          <LucideIcons.Info className="w-6 h-6" />
+          <Icon name="Info" className="w-6 h-6" />
         </div>
         <div>
           <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Administrative Identity</h2>
           <p className="text-xs text-slate-400 font-medium tracking-wide">Detailed account metadata and personal records.</p>
+        </div>
+      </div>
+
+      {/* Profile Photo Upload Section */}
+      <div className="flex items-start gap-6 p-6 bg-slate-50 rounded-3xl border border-slate-100">
+        <div className="relative">
+          <div className="relative w-32 h-32">
+            {userProfilePhoto ? (
+              <>
+                <img
+                  src={userProfilePhoto}
+                  alt="Profile"
+                  className="w-full h-full object-cover rounded-2xl border-4 border-white shadow-lg"
+                />
+                <button
+                  onClick={handleRemovePhoto}
+                  className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-all shadow-lg"
+                >
+                  <Icon name="X" className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center border-4 border-white shadow-lg">
+                <span className="text-4xl font-black text-white">
+                  {user?.fullName?.charAt(0) || 'A'}
+                </span>
+              </div>
+            )}
+            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full border-4 border-slate-50 flex items-center justify-center shadow-lg">
+              {isUploading ? (
+                <Icon name="Loader2" className="w-5 h-5 text-indigo-600 animate-spin" />
+              ) : (
+                <Icon name="Check" className="w-5 h-5 text-emerald-500" />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-4">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 mb-1">Profile Photo</h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Upload a professional headshot. Recommended: 500x500px, JPG or PNG, max 5MB.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={handleUploadClick}
+              disabled={isUploading}
+              className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
+              {isUploading ? (
+                <>
+                  <Icon name="Loader2" className="w-3.5 h-3.5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Icon name="Upload" className="w-3.5 h-3.5" />
+                  {userProfilePhoto ? 'Change Photo' : 'Upload Photo'}
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleRemovePhoto}
+              disabled={!userProfilePhoto || isUploading}
+              className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
+              <Icon name="Trash2" className="w-3.5 h-3.5" />
+              Remove
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handlePhotoUpload}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
+
+          <div className="flex items-center gap-4 pt-4 border-t border-slate-200">
+            <div className="flex items-center gap-2">
+              <Icon name="ShieldCheck" className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-medium text-slate-600">Secure upload</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icon name="Lock" className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-medium text-slate-600">Encrypted storage</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -69,23 +251,23 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       <div className="pt-8 border-t border-slate-50">
-         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Account Metadata</h3>
-         <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-50 rounded-2xl text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Joined Date</p>
-              <p className="text-xs font-black text-slate-700">12 Jan 2024</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-2xl text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Sync</p>
-              <p className="text-xs font-black text-slate-700">Today, 09:45 AM</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-2xl text-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Auth Type</p>
-              <p className="text-xs font-black text-slate-700">MFA Enforced</p>
-            </div>
-         </div>
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Account Metadata</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-4 bg-slate-50 rounded-2xl text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Joined Date</p>
+            <p className="text-xs font-black text-slate-700">{getCurrentDate()}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Sync</p>
+            <p className="text-xs font-black text-slate-700">{getLastSync()}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-2xl text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Auth Type</p>
+            <p className="text-xs font-black text-slate-700">{isMfaEnabled ? 'MFA Enforced' : 'Password Only'}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -94,7 +276,7 @@ const Profile: React.FC = () => {
     <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-10 animate-in fade-in slide-in-from-left-4 duration-300">
       <div>
         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-          <LucideIcons.ShieldCheck className="text-indigo-600" />
+          <Icon name="ShieldCheck" className="text-indigo-600" />
           Security Hardening
         </h2>
         <p className="text-xs text-slate-400 font-medium tracking-wide mt-1">Manage credentials and administrative access protocols.</p>
@@ -102,21 +284,21 @@ const Profile: React.FC = () => {
 
       <form onSubmit={handlePasswordUpdate} className="space-y-6">
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <LucideIcons.Key size={14} /> Update Access Credentials
+          <Icon name="Key" className="w-3.5 h-3.5" /> Update Access Credentials
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Current Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
               placeholder="••••••••"
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">New Secure Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
               placeholder="••••••••"
             />
@@ -129,14 +311,14 @@ const Profile: React.FC = () => {
 
       <div className="pt-8 border-t border-slate-50 space-y-6">
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <LucideIcons.Lock size={14} /> Two-Factor Authentication
+          <Icon name="Lock" className="w-3.5 h-3.5" /> Two-Factor Authentication
         </h3>
         <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
           <div>
             <p className="text-sm font-black text-slate-900">MFA via Authenticator App</p>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">High-security protocol for Tier-1 logins.</p>
           </div>
-          <button 
+          <button
             onClick={() => {
               setIsMfaEnabled(!isMfaEnabled);
               notify(`MFA Protocol ${!isMfaEnabled ? 'Enabled' : 'Disabled'}`, !isMfaEnabled ? 'success' : 'warning');
@@ -147,34 +329,14 @@ const Profile: React.FC = () => {
           </button>
         </div>
       </div>
-
-      <div className="pt-8 border-t border-slate-50 space-y-6">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <LucideIcons.Globe size={14} /> Global API Keys
-        </h3>
-        <div className="p-6 bg-slate-900 rounded-3xl text-white relative overflow-hidden group">
-          <LucideIcons.Zap className="absolute -right-4 -bottom-4 w-24 h-24 text-white/5 group-hover:scale-110 transition-transform" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Active System Key</p>
-              <p className="text-sm font-mono mt-2 text-white/90">ak_live_51P...f6x9</p>
-            </div>
-            <div className="flex gap-2">
-               <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Copy</button>
-               <button className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-rose-500/30">Rotate</button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-
   );
 
   const renderActivity = () => (
     <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
       <div>
         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-          <LucideIcons.History className="text-indigo-600" />
+          <Icon name="History" className="text-indigo-600" />
           Your Audit Timeline
         </h2>
         <p className="text-xs text-slate-400 font-medium tracking-wide mt-1">Chronological history of your administrative operations.</p>
@@ -183,11 +345,10 @@ const Profile: React.FC = () => {
       <div className="relative space-y-8 before:absolute before:left-6 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
         {userLogs.length > 0 ? userLogs.map((log, i) => (
           <div key={log.id} className="relative pl-16 group">
-            <div className={`absolute left-4 top-1 w-4 h-4 rounded-full border-4 border-white shadow-sm ring-4 ring-slate-50 transition-all group-hover:scale-125 z-10 ${
-              log.action === 'Delete' ? 'bg-rose-500' :
+            <div className={`absolute left-4 top-1 w-4 h-4 rounded-full border-4 border-white shadow-sm ring-4 ring-slate-50 transition-all group-hover:scale-125 z-10 ${log.action === 'Delete' ? 'bg-rose-500' :
               log.action === 'Update' ? 'bg-amber-500' :
-              log.action === 'Create' ? 'bg-emerald-500' : 'bg-indigo-500'
-            }`}></div>
+                log.action === 'Create' ? 'bg-emerald-500' : 'bg-indigo-500'
+              }`}></div>
             <div className="bg-slate-50/50 p-6 rounded-[32px] border border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-indigo-500/5 transition-all group-hover:-translate-y-1">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{log.module} Audit</span>
@@ -198,7 +359,7 @@ const Profile: React.FC = () => {
                 {log.details}
               </p>
               <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2">
-                <LucideIcons.Monitor size={12} className="text-slate-300" />
+                <Icon name="Monitor" className="w-3 h-3 text-slate-300" />
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{log.timestamp}</p>
               </div>
             </div>
@@ -209,11 +370,11 @@ const Profile: React.FC = () => {
           </div>
         )}
       </div>
-      <button 
+      <button
         onClick={() => setActiveTab('activity')}
         className="w-full mt-8 py-3 text-indigo-600 bg-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all"
       >
-         View Full Audit
+        View Full Audit
       </button>
     </div>
   );
@@ -223,7 +384,24 @@ const Profile: React.FC = () => {
       <div className="flex items-center justify-between gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-xl">{user?.fullName?.charAt(0) || 'A'}</div>
+            <div className="relative">
+              {userProfilePhoto ? (
+                <img
+                  src={userProfilePhoto}
+                  alt="Profile"
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-md">
+                  <span className="text-xl font-black text-white">
+                    {user?.fullName?.charAt(0) || 'A'}
+                  </span>
+                </div>
+              )}
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
+                <Icon name="Check" className="w-2.5 h-2.5 text-white" />
+              </div>
+            </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900">{user?.fullName}</h1>
               <p className="text-xs text-slate-400 font-medium mt-1">{user?.email}</p>
@@ -239,9 +417,9 @@ const Profile: React.FC = () => {
       <div>
         <div className="mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setActiveTab('details')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>Details</button>
-            <button onClick={() => setActiveTab('security')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'security' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>Security</button>
-            <button onClick={() => setActiveTab('activity')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'activity' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>Activity</button>
+            <button onClick={() => setActiveTab('details')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'details' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Details</button>
+            <button onClick={() => setActiveTab('security')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'security' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Security</button>
+            <button onClick={() => setActiveTab('activity')} className={`px-4 py-2 rounded-xl text-sm font-black ${activeTab === 'activity' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Activity</button>
           </div>
         </div>
 

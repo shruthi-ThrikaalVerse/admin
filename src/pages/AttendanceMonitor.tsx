@@ -10,10 +10,10 @@ const Icon = ({ name, className }: { name: string; className?: string }) => {
 
 const AttendanceMonitor: React.FC = () => {
   const { attendance, employees, leaves, notify } = useHRMS();
-  
+
   // State for date and status filtering
   // Using 2024-05-15 as default to match mock data, but fully supports dynamic selection
-  const [selectedDate, setSelectedDate] = useState(new Date(2024, 4, 15)); 
+  const [selectedDate, setSelectedDate] = useState(new Date(2024, 4, 15));
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'late' | 'on-leave'>('all');
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
@@ -58,24 +58,24 @@ const AttendanceMonitor: React.FC = () => {
   // 1. Data Normalization & Feed Derivation
   const dailyMasterFeed = useMemo(() => {
     const dateStr = formatDateToISO(selectedDate);
-    
+
     return employees.map(emp => {
       // Find clock-in record for this employee on this date
       const record = attendance.find(a => a.employeeId === emp.employeeId && a.date === dateStr);
-      
+
       // Find if employee is on an approved leave for this date
       // Mapping logic check: mock leaves use emp.id, but attendance uses emp.employeeId
-      const onLeave = leaves.find(l => 
-        (l.employeeId === emp.id || l.employeeId === emp.employeeId) && 
-        l.status === 'approved' && 
-        l.startDate <= dateStr && 
+      const onLeave = leaves.find(l =>
+        (l.employeeId === emp.id || l.employeeId === emp.employeeId) &&
+        l.status === 'approved' &&
+        l.startDate <= dateStr &&
         l.endDate >= dateStr
       );
 
       // Priority 1: Attendance Record (Present/Late)
       if (record) {
         let status = record.status;
-        
+
         // Normalize "Late" based on check-in time if the status isn't explicitly set
         // Defining 09:30 AM as the late threshold (570 minutes)
         if (record.checkIn && record.checkIn !== '--') {
@@ -83,27 +83,27 @@ const AttendanceMonitor: React.FC = () => {
           const [hoursStr, minutesStr] = time.split(':');
           let hours = Number(hoursStr);
           const minutes = Number(minutesStr);
-          
+
           if (period === 'PM' && hours !== 12) hours += 12;
           if (period === 'AM' && hours === 12) hours = 0;
 
           const totalMinutes = hours * 60 + minutes;
 
-          if (totalMinutes > 570) { 
+          if (totalMinutes > 570) {
             status = 'late';
           } else {
             status = 'present';
           }
         }
 
-        return { 
-          ...record, 
-          name: emp.fullName, 
+        return {
+          ...record,
+          name: emp.fullName,
           status: status as any,
-          location: record.location || emp.location 
+          location: record.location || emp.location
         };
       }
-      
+
       // Priority 2: Leave Record (On Leave)
       if (onLeave) {
         return {
@@ -117,7 +117,7 @@ const AttendanceMonitor: React.FC = () => {
           location: emp.location
         };
       }
-      
+
       // Priority 3: Absent
       return {
         employeeId: emp.employeeId,
@@ -171,10 +171,10 @@ const AttendanceMonitor: React.FC = () => {
       r.status,
       r.location || 'HQ Office'
     ]);
-    
-    const csvContent = "data:text/csv;charset=utf-8," 
+
+    const csvContent = "data:text/csv;charset=utf-8,"
       + [headers, ...rows].map(e => e.join(",")).join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -182,7 +182,7 @@ const AttendanceMonitor: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    notify(`Report generated for ${filteredFeed.length} personnel.`, 'success');
+    notify(`Report generated for ${filteredFeed.length} persons.`, 'success');
   };
 
   return (
@@ -190,11 +190,12 @@ const AttendanceMonitor: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Attendance Monitor</h1>
-          <p className="text-gray-500 text-sm font-medium">Tracking system for {employees.length} personnel.</p>
+          <p className="text-gray-500 text-sm font-medium">Tracking system for {employees.length} Persons.</p>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-2">
-          <select 
+          <select
+            aria-label="Select Year"
             value={selectedDate.getFullYear()}
             onChange={(e) => handleDateUpdate(parseInt(e.target.value))}
             className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-600 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
@@ -202,7 +203,8 @@ const AttendanceMonitor: React.FC = () => {
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
 
-          <select 
+          <select
+            aria-label="Select Month"
             value={selectedDate.getMonth()}
             onChange={(e) => handleDateUpdate(undefined, parseInt(e.target.value))}
             className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-600 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
@@ -210,7 +212,8 @@ const AttendanceMonitor: React.FC = () => {
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
 
-          <select 
+          <select
+            aria-label="Select Day"
             value={selectedDate.getDate()}
             onChange={(e) => handleDateUpdate(undefined, undefined, parseInt(e.target.value))}
             className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-600 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
@@ -220,57 +223,57 @@ const AttendanceMonitor: React.FC = () => {
             ))}
           </select>
 
-          <button 
+          <button
             onClick={() => setSelectedDate(new Date())}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
           >
             Today
           </button>
-          
+
           <div className="flex items-center gap-1 border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
-             <button 
-               onClick={() => {
-                 const d = new Date(selectedDate);
-                 d.setDate(d.getDate() - 1);
-                 setSelectedDate(d);
-               }} 
-               className="p-2 hover:bg-gray-50 transition-colors border-r"
-             >
-               <Icon name="ChevronLeft" className="w-4 h-4 text-gray-600" />
-             </button>
-             <button 
-               onClick={() => {
-                 const d = new Date(selectedDate);
-                 d.setDate(d.getDate() + 1);
-                 setSelectedDate(d);
-               }} 
-               className="p-2 hover:bg-gray-50 transition-colors"
-             >
-               <Icon name="ChevronRight" className="w-4 h-4 text-gray-600" />
-             </button>
+            <button
+              aria-label="Previous day"
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                setSelectedDate(d);
+              }}
+              className="p-2 hover:bg-gray-50 transition-colors border-r"
+            >
+              <Icon name="ChevronLeft" className="w-4 h-4 text-gray-600" />
+            </button>
+            <button
+              aria-label="Next day"
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                setSelectedDate(d);
+              }}
+              className="p-2 hover:bg-gray-50 transition-colors"
+            >
+              <Icon name="ChevronRight" className="w-4 h-4 text-gray-600" />
+            </button>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {statsSummary.map((stat) => (
-          <button 
+          <button
             key={stat.id}
             onClick={() => setStatusFilter(stat.id as any)}
-            className={`bg-white p-5 rounded-2xl border transition-all text-center group ${
-              statusFilter === stat.id 
-              ? `border-indigo-200 ring-4 ring-indigo-50 shadow-md scale-105` 
+            className={`bg-white p-5 rounded-2xl border transition-all text-center group ${statusFilter === stat.id
+              ? `border-indigo-200 ring-4 ring-indigo-50 shadow-md scale-105`
               : 'border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200'
-            }`}
+              }`}
           >
             <p className="text-[10px] font-black uppercase text-gray-400 mb-1 tracking-widest">{stat.label}</p>
-            <p className={`text-2xl font-black ${
-              stat.color === 'blue' ? 'text-indigo-600' :
+            <p className={`text-2xl font-black ${stat.color === 'blue' ? 'text-indigo-600' :
               stat.color === 'green' ? 'text-emerald-600' :
-              stat.color === 'red' ? 'text-rose-600' :
-              stat.color === 'yellow' ? 'text-amber-600' :
-              'text-purple-600'
-            }`}>{stat.count}</p>
+                stat.color === 'red' ? 'text-rose-600' :
+                  stat.color === 'yellow' ? 'text-amber-600' :
+                    'text-purple-600'
+              }`}>{stat.count}</p>
           </button>
         ))}
       </div>
@@ -284,24 +287,23 @@ const AttendanceMonitor: React.FC = () => {
               <p className="text-xs text-gray-400 font-medium">Real-time presence logs for {selectedDate.toLocaleDateString()}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
             {['all', 'present', 'absent', 'late', 'on-leave'].map((f) => (
               <button
                 key={f}
                 onClick={() => setStatusFilter(f as any)}
-                className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                  statusFilter === f 
-                    ? 'bg-indigo-600 text-white shadow-md' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
+                className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${statusFilter === f
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                  }`}
               >
                 {f}
               </button>
             ))}
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -332,12 +334,11 @@ const AttendanceMonitor: React.FC = () => {
                   <td className="py-5 px-8 text-xs font-bold text-gray-600 text-center">{record.checkOut}</td>
                   <td className="py-5 px-8 text-xs font-black text-indigo-600 text-center">{record.totalHours}</td>
                   <td className="py-5 px-8">
-                    <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border shadow-sm ${
-                      record.status === 'present' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                    <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border shadow-sm ${record.status === 'present' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                       record.status === 'late' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                      record.status === 'on-leave' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                      'bg-rose-50 text-rose-600 border-rose-100'
-                    }`}>
+                        record.status === 'on-leave' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                          'bg-rose-50 text-rose-600 border-rose-100'
+                      }`}>
                       {record.status}
                     </span>
                   </td>
@@ -361,23 +362,27 @@ const AttendanceMonitor: React.FC = () => {
             </tbody>
           </table>
         </div>
-        
+
         <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System synchronized at {lastRefresh.toLocaleTimeString()}</p>
-           <div className="flex gap-2">
-             <button 
-               onClick={downloadReport}
-               className="px-5 py-2.5 bg-white border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-100 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
-             >
-               Generate Report
-             </button>
-             <button 
-               onClick={() => setLastRefresh(new Date())}
-               className="px-5 py-2.5 bg-white border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-100 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
-              >
-                Sync Now
-              </button>
-           </div>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">System Refresh at {lastRefresh.toLocaleTimeString()}</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              aria-label="Generate report"
+              onClick={downloadReport}
+              className="px-5 py-2.5 bg-white border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-100 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+            >
+              Generate Report
+            </button>
+            <button
+              type="button"
+              aria-label="Refresh now"
+              onClick={() => { setLastRefresh(new Date()); notify('Attendance synchronized', 'success'); }}
+              className="px-5 py-2.5 bg-white border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-100 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+            >
+              Refresh Now
+            </button>
+          </div>
         </div>
       </div>
     </div>

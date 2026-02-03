@@ -8,17 +8,41 @@
   --bg: #f8fafc;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
 body {
   background-color: var(--bg);
-  color: #0f172a; /* text-gray-900 */
+  color: #0f172a;
+  /* text-gray-900 */
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
 
 /* Custom scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 10px; height: 10px }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.06); border-radius: 9999px }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 9999px
+}
+
+/* Hide number input spinners so users don't get the browser 'number chooser' */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}

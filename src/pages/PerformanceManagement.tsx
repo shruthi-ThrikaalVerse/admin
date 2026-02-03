@@ -1,727 +1,944 @@
-import React, { useState, useMemo } from 'react';
-import * as LucideIcons from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Search, ChevronRight, Star, Target,
-  CheckCircle, UserMinus, AlertCircle, X, Check, Calendar, PlusCircle,
-  Users, BarChart3, PieChart, ArrowUpRight, Download,
-  SearchX
+  Users, TrendingUp, Calendar, AlertTriangle, Search,
+  Star, Trophy, Award, Clock, Target, BarChart3,
+  PieChart, Download, Filter, MoreVertical, ChevronRight,
+  CheckCircle, XCircle, Clock as ClockIcon, UserCheck,
+  TrendingDown, Eye, MessageSquare, Bell, Settings,
+  ChevronLeft, ChevronRight as ChevronRightIcon, User, Briefcase,
+  X, Activity, Zap, Target as TargetIcon, Award as AwardIcon,
+  MessageCircle, FileText, TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon, MinusCircle
 } from 'lucide-react';
 import { useHRMS } from '../context/HRMSContext';
-import { PerformanceCycle } from '../types';
- 
-// --- 1. MOCK DATA & TYPES ---
-interface Goal {
-  id: number;
+
+interface PerformanceData {
+  id: string;
   name: string;
-  dept: string;
-  goal: string;
-  progress: number;
-  deadline: string;
-  status: 'On Track' | 'At Risk' | 'Behind';
-  kpiMetrics: { label: string; current: number; target: number; unit: string };
+  role: string;
+  department: string;
+  performanceScore: number;
+  kpiScore: number;
+  taskCompletion: number;
+  qualityScore: number;
+  attendance: number;
+  lastReview: string;
+  status: 'exceeding' | 'meeting' | 'below' | 'needs-improvement';
+  trend: 'up' | 'down' | 'stable';
+  email: string;
+  joinDate: string;
+  manager: string;
+  projects: number;
+  achievements: string[];
+  feedback: Array<{ date: string; comment: string; reviewer: string }>;
+  goals: Array<{ title: string; progress: number; deadline: string }>;
 }
- 
-const localMockGoals: Goal[] = [
-  {
-    id: 1, name: 'Rajesh Kumar', dept: 'Engineering',
-    goal: 'Cloud Infrastructure Migration', progress: 85,
-    deadline: '2026-05-15', status: 'On Track',
-    kpiMetrics: { label: 'Uptime', current: 99.4, target: 99.9, unit: '%' }
-  },
-  {
-    id: 2, name: 'Priya Sharma', dept: 'Marketing',
-    goal: 'Brand Rejuvenation Campaign', progress: 40,
-    deadline: '2026-06-01', status: 'At Risk',
-    kpiMetrics: { label: 'Leads', current: 1200, target: 5000, unit: 'users' }
-  },
-  {
-    id: 3, name: 'Amit Patel', dept: 'Operations',
-    goal: 'Logistics Optimization', progress: 95,
-    deadline: '2026-04-30', status: 'On Track',
-    kpiMetrics: { label: 'Efficiency', current: 12, target: 15, unit: '%' }
-  },
-  {
-    id: 4, name: 'Sarah Jones', dept: 'Engineering',
-    goal: 'Security Audit Compliance', progress: 15,
-    deadline: '2026-08-20', status: 'Behind',
-    kpiMetrics: { label: 'Vulns Fixed', current: 5, target: 45, unit: 'issues' }
-  },
-];
- 
-// --- 2. HELPER COMPONENTS ---
-const Icon = ({ name, className }: { name: string; className?: string }) => {
-  const LucideIcon = (LucideIcons as any)[name];
-  return LucideIcon ? <LucideIcon className={className} /> : <AlertCircle className={className} />;
-};
- 
-const StatusBadge = ({ status }: { status: string }) => {
-  const colors: Record<string, string> = {
-    'On Track': 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    'At Risk': 'bg-amber-50 text-amber-700 border-amber-100',
-    'Behind': 'bg-rose-50 text-rose-700 border-rose-100',
-    'active': 'bg-indigo-50 text-indigo-700 border-indigo-100',
-    'completed': 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    'draft': 'bg-slate-50 text-slate-700 border-slate-100',
+
+interface DepartmentStats {
+  name: string;
+  employees: number;
+  avgKPIScore: number;
+  tasksCompleted: number;
+  totalTasks: number;
+  attendance: number;
+  overallRating: number;
+}
+
+const EmployeePerformanceModal: React.FC<{
+  employee: PerformanceData;
+  onClose: () => void;
+  onScheduleReview: (employeeName: string) => void;
+}> = ({ employee, onClose, onScheduleReview }) => {
+  const renderStars = (rating: number, maxStars = 5) => {
+    const safeRating = Math.max(0, Math.min(maxStars, isNaN(rating) ? 0 : rating));
+    const fullStars = Math.floor(safeRating);
+    const hasHalfStar = safeRating % 1 >= 0.5;
+    const emptyStars = Math.max(0, maxStars - fullStars - (hasHalfStar ? 1 : 0));
+
+    return (
+      <div className="flex items-center">
+        {Array.from({ length: Math.max(0, fullStars) }).map((_, i) => (
+          <Star key={`full-${i}`} className="w-4 h-4 text-yellow-500 fill-current" />
+        ))}
+        {hasHalfStar && (
+          <div className="relative">
+            <Star className="w-4 h-4 text-gray-300" />
+            <div className="absolute left-0 top-0 overflow-hidden" style={{ width: '50%' }}>
+              <Star className="w-4 h-4 text-yellow-500 fill-current" />
+            </div>
+          </div>
+        )}
+        {Array.from({ length: Math.max(0, emptyStars) }).map((_, i) => (
+          <Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
+        ))}
+        <span className="ml-2 text-sm font-medium text-gray-700">{safeRating.toFixed(1)}</span>
+      </div>
+    );
   };
+
+  const getPerformanceColor = (score: number) => {
+    if (score >= 4.5) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+    if (score >= 3.5) return 'text-blue-600 bg-blue-50 border-blue-100';
+    if (score >= 2.5) return 'text-amber-600 bg-amber-50 border-amber-100';
+    return 'text-rose-600 bg-rose-50 border-rose-100';
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'up': return <TrendingUpIcon className="w-4 h-4 text-emerald-500" />;
+      case 'down': return <TrendingDownIcon className="w-4 h-4 text-rose-500" />;
+      default: return <MinusCircle className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${colors[status] || 'bg-gray-50'}`}>
-      {status.toUpperCase()}
-    </span>
-  );
-};
- 
-const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-xl" }: any) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
-      <div className={`bg-white rounded-[32px] w-full ${maxWidth} relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]`}>
-        <div className="p-8 border-b flex items-center justify-between bg-white sticky top-0 z-10">
-          <h2 className="text-2xl font-black text-slate-900">{title}</h2>
-          <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-2xl transition-colors">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        {/* Modal Header */}
+        <div className="p-6 border-b flex items-center justify-between bg-white sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+              {employee.name.charAt(0)}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{employee.name}</h2>
+              <p className="text-gray-600">{employee.role} • {employee.department}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-8 overflow-y-auto custom-scrollbar flex-1">{children}</div>
+
+        {/* Modal Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Performance Score */}
+            <div className="md:col-span-2 space-y-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Performance Score</h3>
+                  <div className="flex items-center gap-2">
+                    {getTrendIcon(employee.trend)}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPerformanceColor(employee.performanceScore)}`}>
+                      {employee.status.toUpperCase().replace('-', ' ')}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-center">
+                    <div className="relative w-32 h-32 mx-auto">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="text-4xl font-bold text-gray-900">{employee.performanceScore.toFixed(1)}</span>
+                          <span className="text-gray-500">/5</span>
+                          <div className="mt-2">
+                            {renderStars(employee.performanceScore)}
+                          </div>
+                        </div>
+                      </div>
+                      <svg className="w-full h-full" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(employee.performanceScore / 5) * 283} 283`}
+                          transform="rotate(-90 50 50)"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-600">KPI Score</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-emerald-500 h-2 rounded-full"
+                            style={{ width: `${employee.kpiScore}%` }}
+                          />
+                        </div>
+                        <span className="text-lg font-bold text-gray-900">{employee.kpiScore}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Task Completion</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-500 h-2 rounded-full"
+                            style={{ width: `${employee.taskCompletion}%` }}
+                          />
+                        </div>
+                        <span className="text-lg font-bold text-gray-900">{employee.taskCompletion}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Quality Score</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-amber-500 h-2 rounded-full"
+                            style={{ width: `${employee.qualityScore}%` }}
+                          />
+                        </div>
+                        <span className="text-lg font-bold text-gray-900">{employee.qualityScore}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Goals */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Current Goals</h3>
+                {employee.goals.map((goal, index) => (
+                  <div key={index} className="p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900">{goal.title}</h4>
+                      <span className="text-sm text-gray-500">Due: {goal.deadline}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full"
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{goal.progress}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Employee Details */}
+            <div className="space-y-6">
+              <div className="p-4 border border-gray-200 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Details</h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="font-medium text-gray-900">{employee.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Join Date</p>
+                    <p className="font-medium text-gray-900">{employee.joinDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Manager</p>
+                    <p className="font-medium text-gray-900">{employee.manager}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Active Projects</p>
+                    <p className="font-medium text-gray-900">{employee.projects}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attendance */}
+              <div className="p-4 border border-gray-200 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance</h3>
+                <div className="text-center">
+                  <div className="relative w-24 h-24 mx-auto mb-4">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <span className="text-3xl font-bold text-gray-900">{employee.attendance}%</span>
+                      </div>
+                    </div>
+                    <svg className="w-full h-full" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${employee.attendance * 2.83} 283`}
+                        transform="rotate(-90 50 50)"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-gray-600">Current Month</p>
+                </div>
+              </div>
+
+              {/* Achievements */}
+              <div className="p-4 border border-gray-200 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Achievements</h3>
+                <div className="space-y-2">
+                  {employee.achievements.map((achievement, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <AwardIcon className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm text-gray-700">{achievement}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100"
+          >
+            Close
+          </button>
+          <button
+            onClick={() => {
+              onScheduleReview(employee.name);
+              onClose();
+            }}
+            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+          >
+            Schedule Review
+          </button>
+        </div>
       </div>
     </div>
   );
 };
- 
-// --- 3. MAIN COMPONENT ---
-const PerformanceManagement: React.FC = () => {
-  const { performanceCycles, addPerformanceCycle, employees, notify } = useHRMS();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [isNewCycleModalOpen, setIsNewCycleModalOpen] = useState(false);
- 
-  // New Cycle Management States
-  const [selectedCycle, setSelectedCycle] = useState<PerformanceCycle | null>(null);
-  const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [participantSearch, setParticipantSearch] = useState('');
- 
-  // Track enrolled participants locally for the modal
-  const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set());
- 
-  // New Cycle Form State
-  const [newCycle, setNewCycle] = useState({
-    name: '',
-    period: '',
-    status: 'draft' as PerformanceCycle['status']
-  });
- 
-  // Filtering Logic for Goals - Fixed and ensured it's reactive
-  const filteredGoals = useMemo(() => {
-    return localMockGoals.filter(goal => {
-      const search = searchTerm.trim().toLowerCase();
-      const matchesSearch =
-        goal.name.toLowerCase().includes(search) ||
-        goal.dept.toLowerCase().includes(search) ||
-        goal.goal.toLowerCase().includes(search);
-      const matchesFilter = filterStatus === 'All' || goal.status === filterStatus;
-      return matchesSearch && matchesFilter;
+
+const EmployeePerformanceDashboard: React.FC = () => {
+  const { employees, attendance, notify } = useHRMS();
+  const [performanceDataState, setPerformanceData] = useState<PerformanceData[]>([]);
+  const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [currentDate] = useState<string>(new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  }));
+  const [selectedEmployee, setSelectedEmployee] = useState<PerformanceData | null>(null);
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState<boolean>(false);
+  const [liveUpdates, setLiveUpdates] = useState<Array<{ message: string; time: string }>>([]);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Convert real employees to performance data
+  const loadPerformanceData = () => {
+    if (employees.length === 0) return;
+
+    // Map real employees to performance data
+    const performanceDataList: PerformanceData[] = employees.map((emp, index) => {
+      // Calculate performance score from employee data
+      const leaveBalance = emp.leaveBalance || 0;
+      const status = emp.status || 'active';
+
+      // Base performance score
+      let performanceScore = 4.0;
+
+      // Adjust based on leave balance
+      if (leaveBalance >= 15) performanceScore += 0.5;
+      else if (leaveBalance <= 5) performanceScore -= 0.5;
+
+      // Adjust based on status
+      if (status === 'active') performanceScore += 0.2;
+      else if (status === 'inactive') performanceScore -= 0.3;
+
+      // Random variation for demo
+      performanceScore += (Math.random() * 0.6) - 0.3;
+      performanceScore = Math.max(1, Math.min(5, performanceScore));
+
+      // Determine status
+      const performanceStatus: 'exceeding' | 'meeting' | 'below' | 'needs-improvement' =
+        performanceScore >= 4.5 ? 'exceeding' :
+          performanceScore >= 3.5 ? 'meeting' :
+            performanceScore >= 2.5 ? 'below' : 'needs-improvement';
+
+      // Calculate attendance from actual attendance records
+      const today = new Date().toISOString().split('T')[0];
+      const empAttendance = attendance.filter(a =>
+        a.employeeId === emp.employeeId || a.employeeId === emp.id
+      );
+
+      const attendanceCount = empAttendance.length;
+      const presentCount = empAttendance.filter(a =>
+        a.status === 'present' || a.status === 'late'
+      ).length;
+
+      const attendanceRate = attendanceCount > 0 ?
+        Math.round((presentCount / attendanceCount) * 100) :
+        85 + Math.random() * 15;
+
+      return {
+        id: emp.id || `emp-${index}`,
+        name: emp.fullName,
+        role: emp.designation || 'Employee',
+        department: emp.department,
+        performanceScore: parseFloat(performanceScore.toFixed(1)),
+        kpiScore: Math.floor(60 + Math.random() * 40),
+        taskCompletion: Math.floor(70 + Math.random() * 30),
+        qualityScore: Math.floor(65 + Math.random() * 35),
+        attendance: attendanceRate,
+        lastReview: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: performanceStatus,
+        trend: Math.random() > 0.6 ? 'up' : Math.random() > 0.3 ? 'stable' : 'down',
+        email: emp.email,
+        joinDate: emp.dateOfJoining || new Date(Date.now() - Math.random() * 5 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        manager: emp.reportingManager || 'Not Assigned',
+        projects: Math.floor(1 + Math.random() * 10),
+        achievements: [
+          leaveBalance >= 20 ? 'Perfect Attendance Award' : null,
+          performanceScore >= 4.5 ? 'High Performer' : null,
+          'Team Contributor'
+        ].filter(Boolean) as string[],
+        feedback: [
+          { date: '2024-03-15', comment: 'Good team player', reviewer: emp.reportingManager || 'Manager' },
+          { date: '2024-02-28', comment: 'Meets expectations', reviewer: 'Supervisor' }
+        ],
+        goals: [
+          { title: 'Complete Training', progress: Math.floor(Math.random() * 100), deadline: '2024-06-30' },
+          { title: 'Improve Skills', progress: Math.floor(Math.random() * 100), deadline: '2024-08-15' }
+        ]
+      };
     });
-  }, [searchTerm, filterStatus]);
- 
-  // Filtering Logic for Participants
-  const filteredEmployees = useMemo(() => {
-    return employees.filter(emp =>
-      emp.fullName.toLowerCase().includes(participantSearch.toLowerCase()) ||
-      emp.department.toLowerCase().includes(participantSearch.toLowerCase()) ||
-      emp.employeeId.toLowerCase().includes(participantSearch.toLowerCase())
+
+    // Calculate department stats from real data
+    const departments = [...new Set(employees.map(emp => emp.department))];
+    const deptStats: DepartmentStats[] = departments.map(dept => {
+      const deptEmployees = employees.filter(emp => emp.department === dept);
+      const deptPerformance = performanceDataList.filter(p => p.department === dept);
+
+      return {
+        name: dept,
+        employees: deptEmployees.length,
+        avgKPIScore: deptPerformance.length > 0 ?
+          Number((deptPerformance.reduce((sum, emp) => sum + emp.kpiScore, 0) / deptPerformance.length).toFixed(1)) : 75,
+        tasksCompleted: Math.floor(deptEmployees.length * 45),
+        totalTasks: Math.floor(deptEmployees.length * 50),
+        attendance: deptPerformance.length > 0 ?
+          Number((deptPerformance.reduce((sum, emp) => sum + emp.attendance, 0) / deptPerformance.length).toFixed(1)) : 85,
+        overallRating: deptPerformance.length > 0 ?
+          Number((deptPerformance.reduce((sum, emp) => sum + (emp.performanceScore / 5 * 100), 0) / deptPerformance.length).toFixed(1)) : 75
+      };
+    });
+
+    setPerformanceData(performanceDataList);
+    setDepartmentStats(deptStats);
+    setLastUpdate(new Date());
+  };
+
+  // Initialize data
+  useEffect(() => {
+    loadPerformanceData();
+
+    // Simulate live updates
+    const interval = setInterval(() => {
+      const updateMessages = [
+        { message: 'Performance data updated', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+        { message: 'Attendance records synced', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+        { message: 'New performance reviews submitted', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      ];
+
+      setLiveUpdates(prev => [
+        updateMessages[Math.floor(Math.random() * updateMessages.length)],
+        ...prev.slice(0, 2)
+      ]);
+      setLastUpdate(new Date());
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [employees]);
+
+  // Calculate overall stats from real data
+  const totalEmployees = employees.length;
+  const avgPerformance = performanceDataState.length > 0 ?
+    parseFloat((performanceDataState.reduce((sum, emp) => sum + emp.performanceScore, 0) / performanceDataState.length).toFixed(1)) : 0;
+  const avgAttendance = performanceDataState.length > 0 ?
+    parseFloat((performanceDataState.reduce((sum, emp) => sum + emp.attendance, 0) / performanceDataState.length).toFixed(1)) : 0;
+  const lowPerformers = performanceDataState.filter(emp => emp.performanceScore < 3).length;
+
+  // Get top performers
+  const topPerformers = [...performanceDataState]
+    .filter(emp => emp.performanceScore >= 4.5)
+    .sort((a, b) => b.performanceScore - a.performanceScore)
+    .slice(0, 3);
+
+  // Get low performers
+  const lowPerformersList = [...performanceDataState]
+    .filter(emp => emp.performanceScore < 3)
+    .sort((a, b) => a.performanceScore - b.performanceScore)
+    .slice(0, 3);
+
+  // Filter employees by search term
+  const filteredPerformanceData = useMemo(() => {
+    if (!searchTerm) return performanceDataState;
+
+    return performanceDataState.filter(emp =>
+      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.role.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [employees, participantSearch]);
- 
-  const handleOpenReview = (goal: Goal) => {
-    setSelectedGoal(goal);
-    setIsReviewModalOpen(true);
-  };
- 
-  const handleCreateCycle = (e: React.FormEvent) => {
-    e.preventDefault();
-    addPerformanceCycle({
-      ...newCycle,
-      participants: employees.length,
-      completed: 0
-    });
-    setIsNewCycleModalOpen(false);
-    setNewCycle({ name: '', period: '', status: 'draft' });
-  };
- 
-  const openParticipantsModal = (cycle: PerformanceCycle) => {
-    setSelectedCycle(cycle);
-    // Initialize with all employees enrolled by default for simulation
-    setEnrolledIds(new Set(employees.map(e => e.id)));
-    setIsParticipantsModalOpen(true);
-  };
- 
-  const openReportModal = (cycle: PerformanceCycle) => {
-    setSelectedCycle(cycle);
-    setIsReportModalOpen(true);
-  };
- 
-  const toggleEnrollment = (id: string) => {
-    setEnrolledIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
- 
-  const enrollAll = () => {
-    setEnrolledIds(new Set(employees.map(e => e.id)));
-    notify("All active personnel have been queued for enrollment.");
-  };
- 
-  const handleDownloadReport = () => {
-    if (!selectedCycle) return;
-    notify(`Preparing ${selectedCycle.name} performance metrics...`, 'info');
-    setTimeout(() => {
-      notify(`Cycle report for ${selectedCycle.period} downloaded!`, 'success');
-    }, 1500);
-  };
- 
-  const resetFilters = () => {
-    setSearchTerm('');
-    setFilterStatus('All');
-  };
- 
-  return (
-    <div className="min-h-screen bg-[#f8fafc] space-y-8 font-sans animate-in fade-in duration-500">
-     
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Performance Hub</h1>
-          <p className="text-gray-500 mt-1">Track, review, and approve employee growth cycles.</p>
-        </div>
-        <button
-          onClick={() => setIsNewCycleModalOpen(true)}
-          className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95"
-        >
-          <PlusCircle size={18} />
-          <span>New Review Cycle</span>
-        </button>
-      </div>
- 
-      {/* KPI Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Avg Rating', val: '4.2/5', icon: 'Star', color: 'text-yellow-500', bg: 'bg-yellow-50' },
-          { label: 'Goals Met', val: '88%', icon: 'Target', color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Completion', val: '92%', icon: 'CheckCircle', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Turnover', val: '2.4%', icon: 'UserMinus', color: 'text-rose-500', bg: 'bg-rose-50' },
-        ].map((kpi, i) => (
-          <div key={i} className="p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-            <div className={`w-10 h-10 ${kpi.bg} rounded-xl flex items-center justify-center mb-3`}>
-              <Icon name={kpi.icon} className={`w-5 h-5 ${kpi.color}`} />
-            </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{kpi.label}</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">{kpi.val}</p>
-          </div>
+  }, [performanceDataState, searchTerm]);
+
+  // Filter by department
+  const filteredByDepartment = useMemo(() => {
+    if (selectedDepartment === 'All') return filteredPerformanceData;
+    return filteredPerformanceData.filter(emp => emp.department === selectedDepartment);
+  }, [filteredPerformanceData, selectedDepartment]);
+
+  // Star rendering function
+  const renderStars = (rating: number, maxStars = 5) => {
+    const safeRating = Math.max(0, Math.min(maxStars, isNaN(rating) ? 0 : rating));
+    const fullStars = Math.floor(safeRating);
+    const hasHalfStar = safeRating % 1 >= 0.5;
+    const emptyStars = Math.max(0, maxStars - fullStars - (hasHalfStar ? 1 : 0));
+
+    return (
+      <div className="flex items-center">
+        {Array.from({ length: Math.max(0, fullStars) }).map((_, i) => (
+          <Star key={`full-${i}`} className="w-4 h-4 text-yellow-500 fill-current" />
         ))}
+        {hasHalfStar && (
+          <div className="relative">
+            <Star className="w-4 h-4 text-gray-300" />
+            <div className="absolute left-0 top-0 overflow-hidden" style={{ width: '50%' }}>
+              <Star className="w-4 h-4 text-yellow-500 fill-current" />
+            </div>
+          </div>
+        )}
+        {Array.from({ length: Math.max(0, emptyStars) }).map((_, i) => (
+          <Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
+        ))}
+        <span className="ml-2 text-sm font-medium text-gray-700">{safeRating.toFixed(1)}</span>
       </div>
- 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-       
-        {/* Goals List Main Column */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-gray-50 bg-gray-50/20 flex flex-col md:flex-row justify-between gap-4">
-              <h2 className="text-xl font-black text-gray-900">Active Goals</h2>
-              <div className="flex gap-2">
-                <div className="relative group flex-1 md:flex-none">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-indigo-500 transition-colors" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search name, dept, or objective..."
-                    value={searchTerm}
-                    className="pl-11 pr-10 py-3 text-sm border-none bg-gray-100 rounded-2xl focus:ring-2 focus:ring-indigo-500 w-full md:w-64 transition-all font-medium"
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={filterStatus}
-                  className="text-[10px] font-black uppercase tracking-widest bg-gray-100 border-none rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 text-gray-500"
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="On Track">On Track</option>
-                  <option value="At Risk">At Risk</option>
-                  <option value="Behind">Behind</option>
-                </select>
+    );
+  };
+
+  const getPerformanceColor = (score: number) => {
+    if (score >= 4.5) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+    if (score >= 3.5) return 'text-blue-600 bg-blue-50 border-blue-100';
+    if (score >= 2.5) return 'text-amber-600 bg-amber-50 border-amber-100';
+    return 'text-rose-600 bg-rose-50 border-rose-100';
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'up': return <TrendingUpIcon className="w-4 h-4 text-emerald-500" />;
+      case 'down': return <TrendingDownIcon className="w-4 h-4 text-rose-500" />;
+      default: return <MinusCircle className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const handleViewEmployee = (employee: PerformanceData) => {
+    setSelectedEmployee(employee);
+    setIsEmployeeModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsEmployeeModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
+  const handleScheduleReview = (employeeName: string) => {
+    notify(`Performance review scheduled for ${employeeName}`, 'success');
+  };
+
+  const handleRefreshData = () => {
+    loadPerformanceData();
+    notify('Performance data refreshed', 'info');
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 font-sans">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Employee Performance Dashboard</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-gray-600">{currentDate}</p>
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                <Zap className="w-3 h-3" />
+                <span>Live Data • {performanceDataState.length} Employees • Updated: {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
- 
-            <div className="divide-y divide-gray-50 min-h-[300px]">
-              {filteredGoals.map((goal) => (
-                <div
-                  key={goal.id}
-                  onClick={() => handleOpenReview(goal)}
-                  className="p-8 hover:bg-slate-50 transition-all cursor-pointer group flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm border border-indigo-100 group-hover:scale-105 transition-transform">
-                      {goal.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4 className="font-black text-lg text-gray-900">{goal.name}</h4>
-                        <StatusBadge status={goal.status} />
-                      </div>
-                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{goal.dept} • {goal.goal}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-10">
-                    <div className="text-right hidden sm:block">
-                      <div className="w-40 bg-gray-100 h-2 rounded-full mb-2 overflow-hidden">
-                        <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${goal.progress}%` }}></div>
-                      </div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{goal.progress}% COMPLETE</p>
-                    </div>
-                    <ChevronRight className="text-gray-300 group-hover:text-indigo-600 transform group-hover:translate-x-2 transition-all" size={20} />
-                  </div>
-                </div>
-              ))}
-              {filteredGoals.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-300">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <SearchX size={40} className="text-slate-300" />
-                  </div>
-                  <h3 className="text-lg font-black text-slate-800">No matching goals found</h3>
-                  <p className="text-sm text-slate-400 max-w-xs mx-auto mt-2">Adjust your filters or search terms to find what you're looking for.</p>
-                  <button
-                    onClick={resetFilters}
-                    className="mt-6 px-6 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-100 transition-all"
-                  >
-                    Reset All Filters
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
-        </div>
- 
-        {/* Sidebar Cards */}
-        <div className="space-y-6">
-          {performanceCycles.map((cycle) => (
-            <div
-              key={cycle.id}
-              className={`p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden transition-all hover:-translate-y-1 ${
-                cycle.status === 'active' ? 'bg-gradient-to-br from-indigo-600 to-violet-700' :
-                cycle.status === 'completed' ? 'bg-gradient-to-br from-emerald-600 to-teal-700' : 'bg-slate-800'
-              }`}
-            >
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{cycle.period}</p>
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-widest ${
-                    cycle.status === 'active' ? 'bg-white/20' :
-                    cycle.status === 'completed' ? 'bg-white/20' : 'bg-slate-700'
-                  }`}>
-                    {cycle.status}
-                  </span>
-                </div>
-                <h3 className="text-2xl font-black mb-6 leading-tight">{cycle.name}</h3>
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2 opacity-80">
-                  <span>Progress: {cycle.completed}/{cycle.participants}</span>
-                  <span>{Math.round((cycle.completed / (cycle.participants || 1)) * 100)}%</span>
-                </div>
-                <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden mb-8 shadow-inner">
-                  <div className="bg-white h-full rounded-full shadow-lg transition-all duration-1000" style={{ width: `${(cycle.completed / (cycle.participants || 1)) * 100}%` }}></div>
-                </div>
-                <button
-                  onClick={() => cycle.status === 'active' ? openParticipantsModal(cycle) : openReportModal(cycle)}
-                  className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                    cycle.status === 'active' ? 'bg-white text-indigo-600 hover:bg-indigo-50' :
-                    cycle.status === 'completed' ? 'bg-white text-emerald-600 hover:bg-emerald-50' :
-                    'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {cycle.status === 'active' ? 'Manage Participants' : 'View Report'}
-                </button>
-              </div>
-              <div className="absolute -right-6 -bottom-6 opacity-10">
-                {cycle.status === 'active' ? <Users size={140} /> : <BarChart3 size={140} />}
-              </div>
-            </div>
-          ))}
- 
-          <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
-            <h3 className="font-black text-gray-900 mb-6 flex items-center gap-3">
-              <Star className="text-yellow-500 fill-current" size={20} />
-              Top Performers
-            </h3>
-            <div className="space-y-4">
-              {localMockGoals.slice(0, 3).map((g, i) => (
-                <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs uppercase">
-                       {g.name.charAt(0)}
-                    </div>
-                    <span className="text-sm font-black text-gray-700">{g.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100 group-hover:scale-105 transition-transform">
-                    <span className="text-xs font-black text-yellow-700">4.{9-i}</span>
-                    <Star className="w-3 h-3 text-yellow-500 fill-current" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
- 
-      {/* --- NEW REVIEW CYCLE MODAL --- */}
-      <Modal
-        isOpen={isNewCycleModalOpen}
-        onClose={() => setIsNewCycleModalOpen(false)}
-        title="Initialize Review Cycle"
-      >
-        <form onSubmit={handleCreateCycle} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cycle Title</label>
-            <input
-              required
-              placeholder="e.g., Q3 2024 Engineering Sync"
-              className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
-              value={newCycle.name}
-              onChange={e => setNewCycle({...newCycle, name: e.target.value})}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Review Period</label>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
               <input
-                required
-                placeholder="July - Sept 2024"
-                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
-                value={newCycle.period}
-                onChange={e => setNewCycle({...newCycle, period: e.target.value})}
+                type="text"
+                placeholder="Search employees..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm w-48 md:w-56"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Status</label>
+
+            <button
+              onClick={handleRefreshData}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <Activity className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
+            </button>
+
+            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              <Download className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
+            </button>
+          </div>
+        </div>
+
+        {/* Live Updates */}
+        {liveUpdates.length > 0 && (
+          <div className="mb-4 p-3 bg-white border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-gray-700">Live Updates</span>
+            </div>
+            <div className="flex items-center gap-4 overflow-x-auto">
+              {liveUpdates.map((update, index) => (
+                <div key={index} className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-xs text-gray-500">{update.time}</span>
+                  <span className="text-xs text-gray-700">{update.message}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div className="space-y-6">
+        {/* Total Employees */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Total Employees</h2>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{totalEmployees}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Avg Performance</p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <span className="text-xl font-bold text-gray-900">{avgPerformance.toFixed(1)}</span>
+                  <span className="text-gray-500">/ 5</span>
+                </div>
+                <div className="mt-1">
+                  {renderStars(avgPerformance)}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Attendance</p>
+                <div className="mt-1">
+                  <span className="text-xl font-bold text-gray-900">{avgAttendance.toFixed(1)}%</span>
+                </div>
+                <div className="mt-1">
+                  <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className="bg-emerald-500 h-1.5 rounded-full"
+                      style={{ width: `${avgAttendance}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Low Performers</p>
+                <div className="mt-1">
+                  <span className="text-xl font-bold text-gray-900">{lowPerformers}</span>
+                </div>
+                <p className="text-xs text-rose-600 font-medium mt-0.5">Needs attention</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Department Performance & KPI */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Department Performance */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Department-wise Performance</h2>
               <select
-                className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-[10px] uppercase tracking-widest text-slate-500"
-                value={newCycle.status}
-                onChange={e => setNewCycle({...newCycle, status: e.target.value as any})}
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
               >
-                <option value="draft">Draft (Setup)</option>
-                <option value="active">Active (Live)</option>
+                <option value="All">All Departments</option>
+                {departmentStats.map(dept => (
+                  <option key={dept.name} value={dept.name}>{dept.name}</option>
+                ))}
               </select>
             </div>
-          </div>
-         
-          <div className="p-6 bg-indigo-50 rounded-[24px] border border-indigo-100">
-             <div className="flex items-center gap-3 mb-3 text-indigo-600">
-                <Target size={20} />
-                <h4 className="text-xs font-black uppercase tracking-widest">Target Demographic</h4>
-             </div>
-             <p className="text-sm text-indigo-700/70 font-medium leading-relaxed">
-               This cycle will automatically include all <strong>{employees.length} active personnel</strong>. You can fine-tune participant lists in the "Manage Participants" section after creation.
-             </p>
-          </div>
- 
-          <div className="pt-6 border-t border-slate-100 flex gap-4">
-             <button type="button" onClick={() => setIsNewCycleModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Abort</button>
-             <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Commit Cycle</button>
-          </div>
-        </form>
-      </Modal>
- 
-      {/* --- MANAGE PARTICIPANTS MODAL --- */}
-      <Modal
-        isOpen={isParticipantsModalOpen}
-        onClose={() => setIsParticipantsModalOpen(false)}
-        title={`Cycle Roster: ${selectedCycle?.name}`}
-        maxWidth="max-w-3xl"
-      >
-        <div className="space-y-6">
-          <div className="flex items-center justify-between gap-4">
-             <div className="relative flex-1 group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={16} />
-                <input
-                   type="text"
-                   placeholder="Search employees by name, ID or cluster..."
-                   className="w-full pl-12 pr-10 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 shadow-inner"
-                   value={participantSearch}
-                   onChange={e => setParticipantSearch(e.target.value)}
-                />
-                {participantSearch && (
-                  <button
-                    onClick={() => setParticipantSearch('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 p-1"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-             </div>
-             <button
-                onClick={enrollAll}
-                className="px-6 py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all"
-             >
-                Enroll All
-             </button>
-          </div>
- 
-          <div className="bg-white rounded-[24px] border border-slate-100 overflow-hidden">
-             <div className="max-h-[400px] overflow-y-auto custom-scrollbar divide-y divide-slate-50">
-                {filteredEmployees.map(emp => {
-                   const isEnrolled = enrolledIds.has(emp.id);
-                   return (
-                     <div key={emp.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
-                        <div className="flex items-center gap-4">
-                           <img src={emp.avatar} className="w-10 h-10 rounded-xl border-2 border-slate-100 group-hover:scale-105 transition-transform" alt="" />
-                           <div>
-                              <p className="font-black text-slate-800 text-sm leading-tight">{emp.fullName}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{emp.employeeId} • {emp.department}</p>
-                           </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Department</th>
+                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Employees</th>
+                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Avg KPI</th>
+                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Tasks</th>
+                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Attendance</th>
+                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Rating</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {departmentStats.map((dept) => (
+                    <tr key={dept.name} className="hover:bg-gray-50">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded flex items-center justify-center ${dept.name === 'Sales' ? 'bg-blue-100 text-blue-600' :
+                            dept.name === 'Development' ? 'bg-emerald-100 text-emerald-600' :
+                              dept.name === 'Support' ? 'bg-amber-100 text-amber-600' :
+                                dept.name === 'Marketing' ? 'bg-pink-100 text-pink-600' :
+                                  'bg-purple-100 text-purple-600'
+                            }`}>
+                            <span className="text-xs font-bold">{dept.name.charAt(0)}</span>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{dept.name}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border transition-colors ${
-                              isEnrolled ? 'text-emerald-500 bg-emerald-50 border-emerald-100' : 'text-slate-400 bg-slate-50 border-slate-100'
-                           }`}>
-                              {isEnrolled ? 'Enrolled' : 'Available'}
-                           </span>
-                           <button
-                              onClick={() => toggleEnrollment(emp.id)}
-                              className={`w-10 h-6 rounded-full relative p-1 transition-all duration-200 hover:shadow-md ${
-                                 isEnrolled ? 'bg-indigo-600' : 'bg-slate-300'
-                              }`}
-                           >
-                              <div className={`w-4 h-4 bg-white rounded-full absolute transition-all duration-200 ${
-                                 isEnrolled ? 'right-1' : 'left-1'
-                              }`}></div>
-                           </button>
+                      </td>
+                      <td className="p-3">
+                        <span className="font-medium text-gray-900">{dept.employees}</span>
+                      </td>
+                      <td className="p-3">
+                        <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className="bg-blue-500 h-1.5 rounded-full"
+                            style={{ width: `${dept.avgKPIScore}%` }}
+                          />
                         </div>
-                     </div>
-                   );
-                })}
-                {filteredEmployees.length === 0 && (
-                  <div className="p-20 text-center">
-                    <p className="text-sm font-black text-slate-300 uppercase tracking-widest">No matching personnel</p>
-                  </div>
-                )}
-             </div>
+                        <span className="text-xs text-gray-700 mt-1">{dept.avgKPIScore}%</span>
+                      </td>
+                      <td className="p-3">
+                        {renderStars(dept.tasksCompleted / Math.max(dept.totalTasks, 1) * 5)}
+                      </td>
+                      <td className="p-3">
+                        <span className="font-medium text-gray-900">{dept.attendance}%</span>
+                      </td>
+                      <td className="p-3">
+                        {renderStars(dept.overallRating / 20)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
- 
-          <div className="pt-6 border-t border-slate-100 flex justify-between items-center">
-             <p className="text-xs font-bold text-slate-400 italic">Showing {filteredEmployees.length} of {employees.length} personnel • {enrolledIds.size} Enrolled</p>
-             <button
-                onClick={() => {
-                   notify(`Cycle roster (${enrolledIds.size} members) synchronized successfully.`);
-                   setIsParticipantsModalOpen(false);
-                }}
-                className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
-             >
-                Commit Roster
-             </button>
+
+          {/* KPI Categories */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">KPI Category</h2>
+            <div className="space-y-4">
+              {[
+                { label: 'KPI Score', value: 80, color: 'bg-blue-500' },
+                { label: 'Task Completion', value: 92, color: 'bg-emerald-500' },
+                { label: 'Quality', value: 88, color: 'bg-amber-500' },
+                { label: 'Attendance', value: 95, color: 'bg-purple-500' },
+                { label: 'Teamwork', value: 85, color: 'bg-pink-500' }
+              ].map((kpi, index) => (
+                <div key={index} className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-700">{kpi.label}</span>
+                    <span className="text-sm font-medium text-gray-900">{kpi.value}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className="h-1.5 rounded-full"
+                      style={{
+                        width: `${kpi.value}%`,
+                        backgroundColor: index === 0 ? '#3b82f6' :
+                          index === 1 ? '#10b981' :
+                            index === 2 ? '#f59e0b' :
+                              index === 3 ? '#8b5cf6' : '#ec4899'
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </Modal>
- 
-      {/* --- VIEW REPORT MODAL --- */}
-      <Modal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        title={`Insights: ${selectedCycle?.name}`}
-        maxWidth="max-w-3xl"
-      >
-        <div className="space-y-8 pb-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 text-center space-y-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avg Cycle Score</p>
-                <p className="text-3xl font-black text-indigo-600">4.4/5</p>
-                <div className="flex justify-center gap-1">
-                   {[1,2,3,4,5].map(i => <Star key={i} size={10} className={i <= 4 ? "text-yellow-400 fill-current" : "text-slate-200"} />)}
-                </div>
-             </div>
-             <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 text-center space-y-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Participation Rate</p>
-                <p className="text-3xl font-black text-emerald-600">
-                   {selectedCycle ? Math.round((selectedCycle.completed / selectedCycle.participants) * 100) : 0}%
-                </p>
-                <p className="text-[10px] font-bold text-emerald-600/60 uppercase">High Compliance</p>
-             </div>
-             <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 text-center space-y-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Exceeding Exp.</p>
-                <p className="text-3xl font-black text-blue-600">24</p>
-                <p className="text-[10px] font-bold text-blue-600/60 uppercase">Personnel</p>
-             </div>
-          </div>
- 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                   <Star size={14} className="text-yellow-500 fill-current" /> High Performers
-                </h4>
-                <div className="space-y-3">
-                   {localMockGoals.slice(0, 4).map((emp, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-50 rounded-[20px] shadow-sm hover:shadow-md transition-all">
-                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs uppercase">{emp.name.charAt(0)}</div>
-                            <p className="text-sm font-black text-slate-700">{emp.name}</p>
-                         </div>
-                         <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-50 rounded-lg text-yellow-700 font-black text-[10px]">
-                            4.{9-i} <Star size={10} className="fill-current" />
-                         </div>
+
+        {/* Top & Low Performers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Performers */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Top Performers</h2>
+              <Trophy className="w-5 h-5 text-amber-500" />
+            </div>
+
+            <div className="space-y-3">
+              {topPerformers.map((emp, index) => (
+                <div
+                  key={emp.id}
+                  className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-white rounded-lg border border-emerald-100 hover:border-emerald-200 cursor-pointer"
+                  onClick={() => handleViewEmployee(emp)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <span className="text-base font-bold text-emerald-600">
+                          {emp.name.charAt(0)}
+                        </span>
                       </div>
-                   ))}
-                </div>
-             </div>
- 
-             <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                   <ArrowUpRight size={14} className="text-indigo-500" /> Dept Distribution
-                </h4>
-                <div className="space-y-4 pt-2">
-                   {[
-                      { label: 'Engineering', val: 92, color: 'bg-indigo-500' },
-                      { label: 'Marketing', val: 78, color: 'bg-pink-500' },
-                      { label: 'Sales', val: 88, color: 'bg-emerald-500' },
-                      { label: 'Operations', val: 65, color: 'bg-amber-500' },
-                   ].map((dept, i) => (
-                      <div key={i} className="space-y-1.5">
-                         <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            <span>{dept.label}</span>
-                            <span>{dept.val}%</span>
-                         </div>
-                         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full ${dept.color} rounded-full transition-all duration-1000`} style={{ width: `${dept.val}%` }}></div>
-                         </div>
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-bold text-white">{index + 1}</span>
                       </div>
-                   ))}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                      <p className="text-xs text-gray-600">{emp.role}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      <span className="text-lg font-bold text-gray-900">{emp.performanceScore.toFixed(1)}</span>
+                      <Star className="w-4 h-4 text-amber-500 fill-current" />
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {getTrendIcon(emp.trend)}
+                      <p className="text-xs text-emerald-600 font-medium">Exceeding</p>
+                    </div>
+                  </div>
                 </div>
-             </div>
-          </div>
- 
-          <div className="p-6 bg-indigo-600 rounded-[24px] text-white flex items-center justify-between shadow-xl shadow-indigo-100 relative overflow-hidden group">
-             <div className="relative z-10">
-                <h5 className="text-lg font-black mb-1">Detailed Analytics Export</h5>
-                <p className="text-xs text-white/70 font-medium">Download the full CSV report for deeper personnel analysis.</p>
-             </div>
-             <button
-                onClick={handleDownloadReport}
-                className="relative z-10 p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all active:scale-95 flex items-center justify-center"
-             >
-                <Download className="w-6 h-6 text-white" />
-             </button>
-             <PieChart className="absolute -right-4 -bottom-4 opacity-10" size={100} />
-          </div>
-        </div>
-      </Modal>
- 
-      {/* --- REVIEW SLIDE-OVER MODAL --- */}
-      {isReviewModalOpen && selectedGoal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-end bg-slate-900/40 backdrop-blur-sm">
-          <div
-            className="h-full w-full max-w-md bg-white shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col"
-          >
-            {/* Modal Header */}
-            <div className="p-8 border-b flex justify-between items-center bg-white sticky top-0">
-              <h2 className="text-2xl font-black text-gray-900">Performance Audit</h2>
-              <button onClick={() => setIsReviewModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-2xl transition-colors">
-                <X size={24} />
-              </button>
+              ))}
             </div>
- 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
-              <div className="flex items-center gap-6 p-6 bg-indigo-50 rounded-[32px] border border-indigo-100">
-                <div className="w-16 h-16 rounded-[24px] bg-indigo-600 text-white flex items-center justify-center text-2xl font-black shadow-lg">
-                  {selectedGoal.name.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="font-black text-2xl text-gray-900">{selectedGoal.name}</h3>
-                  <p className="text-xs text-indigo-600 font-black uppercase tracking-widest mt-1">{selectedGoal.dept}</p>
-                </div>
-              </div>
- 
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Objective</label>
-                  <p className="text-xl font-black text-gray-800 mt-2 leading-tight">{selectedGoal.goal}</p>
-                </div>
- 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-5 bg-slate-50 rounded-[24px] border border-slate-100">
-                    <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Real-time Metric</p>
-                    <p className="text-2xl font-black text-gray-900">
-                      {selectedGoal.kpiMetrics.current}{selectedGoal.kpiMetrics.unit}
-                    </p>
-                  </div>
-                  <div className="p-5 bg-slate-50 rounded-[24px] border border-slate-100">
-                    <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Threshold</p>
-                    <p className="text-2xl font-black text-gray-900">
-                      {selectedGoal.kpiMetrics.target}{selectedGoal.kpiMetrics.unit}
-                    </p>
-                  </div>
-                </div>
- 
-                <div className="p-6 bg-white border border-slate-100 rounded-[32px] shadow-sm space-y-4">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    <span>Cumulative Progress</span>
-                    <span className="text-indigo-600 font-black">{selectedGoal.progress}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden shadow-inner">
-                    <div className="bg-indigo-600 h-full rounded-full transition-all duration-700" style={{ width: `${selectedGoal.progress}%` }}></div>
-                  </div>
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
-                    <Calendar size={14} className="text-slate-300" />
-                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                      Hard Deadline: {selectedGoal.deadline}
-                    </p>
-                  </div>
-                </div>
-              </div>
- 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Administrative Assessment</label>
-                <textarea
-                  className="w-full p-6 bg-slate-50 border-none rounded-[24px] text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-300"
-                  rows={4}
-                  placeholder="Insert review notes, blockers, or specific performance feedback..."
-                ></textarea>
-              </div>
+          </div>
+
+          {/* Low Performers */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Low Performers</h2>
+              <AlertTriangle className="w-5 h-5 text-rose-500" />
             </div>
- 
-            {/* Modal Footer */}
-            <div className="p-8 border-t bg-gray-50/50 flex gap-4">
-              <button
-                onClick={() => setIsReviewModalOpen(false)}
-                className="flex-1 py-4 font-black text-xs uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                Defer
-              </button>
-              <button
-                onClick={() => {
-                  alert(`Performance assessment for ${selectedGoal.name} has been synchronized.`);
-                  setIsReviewModalOpen(false);
-                }}
-                className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Check size={18} />
-                Validate Review
-              </button>
+
+            <div className="space-y-3">
+              {lowPerformersList.map((emp) => (
+                <div
+                  key={emp.id}
+                  className="flex items-center justify-between p-3 bg-gradient-to-r from-rose-50 to-white rounded-lg border border-rose-100 hover:border-rose-200 cursor-pointer"
+                  onClick={() => handleViewEmployee(emp)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                      <span className="text-base font-bold text-rose-600">
+                        {emp.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                      <p className="text-xs text-gray-600">{emp.role}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      <span className="text-lg font-bold text-gray-900">{emp.performanceScore.toFixed(1)}</span>
+                      <Star className="w-4 h-4 text-gray-300" />
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {getTrendIcon(emp.trend)}
+                      <p className="text-xs text-rose-600 font-medium">Needs Improvement</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Employee List Table */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Employee Performance List</h2>
+            <span className="text-sm text-gray-600">{filteredByDepartment.length} employees</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Employee</th>
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Department</th>
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Performance</th>
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">KPI</th>
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Attendance</th>
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredByDepartment.slice(0, 10).map((emp) => (
+                  <tr key={emp.id} className="hover:bg-gray-50">
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <span className="text-sm font-bold text-blue-600">{emp.name.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                          <p className="text-xs text-gray-600">{emp.role}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-sm text-gray-700">{emp.department}</span>
+                    </td>
+                    <td className="p-3">
+                      {renderStars(emp.performanceScore)}
+                    </td>
+                    <td className="p-3">
+                      <span className="font-medium text-gray-900">{emp.kpiScore}%</span>
+                    </td>
+                    <td className="p-3">
+                      <span className="font-medium text-gray-900">{emp.attendance}%</span>
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPerformanceColor(emp.performanceScore)}`}>
+                        {emp.status.replace('-', ' ')}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <button
+                        onClick={() => handleViewEmployee(emp)}
+                        className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded hover:bg-blue-100"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Employee Performance Modal */}
+      {isEmployeeModalOpen && selectedEmployee && (
+        <EmployeePerformanceModal
+          employee={selectedEmployee}
+          onClose={handleCloseModal}
+          onScheduleReview={handleScheduleReview}
+        />
       )}
     </div>
   );
 };
- 
-export default PerformanceManagement;
+
+export default EmployeePerformanceDashboard;
