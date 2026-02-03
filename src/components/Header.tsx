@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Header: React.FC<{ setOpen: (val: boolean) => void }> = ({ setOpen }) => {
   const { user, logout } = useAuth();
-  const { adminNotifications, markNotificationAsRead, employees } = useHRMS();
+  const { adminNotifications, markNotificationAsRead, employees, getProfilePhoto } = useHRMS();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifTab, setNotifTab] = useState<'unread' | 'read'>('unread');
@@ -165,7 +165,7 @@ const Header: React.FC<{ setOpen: (val: boolean) => void }> = ({ setOpen }) => {
               </div>
             </div>
             <img
-              src={user?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=admin"}
+              src={getProfilePhoto && user ? (getProfilePhoto(user.id) || user.avatar) : (user?.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=admin")}
               className="w-8 h-8 rounded-full border-2 border-indigo-50 shadow-sm"
               alt="Admin"
             />

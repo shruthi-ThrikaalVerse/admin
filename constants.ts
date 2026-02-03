@@ -51,7 +51,7 @@ export const NAV_ITEMS = [
   { id: 'notifications-admin', label: 'Notifications', icon: 'Bell' },
   { id: 'payroll', label: 'Payroll Central', icon: 'IndianRupee' },
   { id: 'payslips', label: 'Payslips Module', icon: 'ReceiptText' },
-  { id: 'performance', label: 'Performance', icon: 'TrendingUp' },
+  { id: 'performance', label: 'Reviews Rating', icon: 'Star' },
   { id: 'system', label: 'System Admin', icon: 'Settings' },
   { id: 'profile', label: 'My Profile', icon: 'UserCircle' },
 ];

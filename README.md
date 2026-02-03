@@ -32,3 +32,21 @@ npm install -D tailwindcss postcss autoprefixer
 
 - Entry point: `src/main.tsx`. Global styles: `src/styles/index.css` (includes Tailwind directives).
 - After installing deps, run `npm run dev` for local development. If you prefer to build Tailwind output manually, you can run a Tailwind CLI command or rely on Vite/PostCSS during dev/build.
+
+
+## Audit Server (dev mode)
+
+A small demo audit server is included at `server/index.js` for local development. It exposes:
+
+- `GET /api/admin/audit-logs` — queryable, paginated logs (requires Authorization bearer token).
+- `POST /api/admin/export-logs` — accept filter and return CSV/JSON export (requires CSRF header `x-csrf-token: demo-csrf-token`).
+- `POST /api/admin/audit-access` — logs access to the audit viewer (used by the UI).
+
+Run it alongside the frontend: `npm run server`.
+
+Demo tokens available for development:
+
+- `admin-token` — role `admin` (use in header `Authorization: Bearer admin-token`)
+- `auditor-token` — role `auditor` (use `Authorization: Bearer auditor-token`)
+
+Note: This demo server is for development only and uses an in-memory store; for production wire it to your central log storage, enable persistent sessions, and strengthen CSRF/authentication mechanisms.

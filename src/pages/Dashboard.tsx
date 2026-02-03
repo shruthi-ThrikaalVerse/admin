@@ -1,4 +1,3 @@
-// Dashboard copied from root
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
@@ -41,6 +40,8 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [eventFilter, setEventFilter] = useState<'all' | 'mine'>('all');
+  const [activityFilter, setActivityFilter] = useState<string>('all');
+  const [showActivityFilter, setShowActivityFilter] = useState(false);
 
   const pendingLeaves = leaves.filter(l => l.status === 'pending');
   const activeCount = employees.filter(e => e.status === 'active').length;
@@ -68,6 +69,27 @@ const Dashboard: React.FC = () => {
     if (!currentEmployee) return [];
     return payslips.filter(p => (p.employeeId === currentEmployee.employeeId || p.employeeId === currentEmployee.id) && p.status === 'sent');
   }, [payslips, currentEmployee]);
+
+  const activityTypes = [
+    { id: 'all', label: 'All Activities', icon: 'List' },
+    { id: 'checkin', label: 'Check-ins', icon: 'Zap' },
+    { id: 'checkout', label: 'Check-outs', icon: 'LogOut' },
+    { id: 'leave', label: 'Leave Requests', icon: 'Calendar' },
+    { id: 'document', label: 'Documents', icon: 'FileText' },
+    { id: 'update', label: 'Profile Updates', icon: 'UserCog' },
+  ];
+
+  const filteredActivities = useMemo(() => {
+    let filtered = [...activities];
+    
+    if (activityFilter !== 'all') {
+      filtered = filtered.filter(activity => activity.type === activityFilter);
+    }
+    
+    return filtered
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 5);
+  }, [activities, activityFilter]);
 
   const handleTraceActivity = (type: string, name: string) => {
     notify(`Tracing ${type} record for ${name}...`, 'info');
@@ -101,6 +123,11 @@ const Dashboard: React.FC = () => {
     setTimeout(() => {
       notify(`Payslip for ${p.month} ${p.year} downloaded!`, 'success');
     }, 1000);
+  };
+
+  const clearActivityFilter = () => {
+    setActivityFilter('all');
+    setShowActivityFilter(false);
   };
 
   return (
@@ -184,24 +211,106 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-8 border-b flex items-center justify-between">
+            <div className="p-8 border-b flex items-center justify-between relative">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Live Activity Feed</h2>
                 <p className="text-xs text-slate-400 font-medium">Real-time sync from across the organization.</p>
               </div>
-              <button title="Filter activities" aria-label="Filter activities" className="p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-2xl transition-all"><Icon name="Filter" className="w-5 h-5" /></button>
+              
+              <div className="relative">
+                <button
+                  onClick={() => setShowActivityFilter(!showActivityFilter)}
+                  className={`p-3 rounded-2xl transition-all flex items-center gap-2 ${
+                    showActivityFilter || activityFilter !== 'all' 
+                      ? 'bg-indigo-50 text-indigo-600 shadow-sm' 
+                      : 'bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600'
+                  }`}
+                >
+                  <Icon name="Filter" className="w-5 h-5" />
+                  {activityFilter !== 'all' && (
+                    <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
+                  )}
+                </button>
+                
+                {/* Filter Popover */}
+                {showActivityFilter && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowActivityFilter(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 z-20 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 min-w-[220px]">
+                      <div className="mb-3">
+                        <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-3">Filter Activities</p>
+                        <div className="space-y-1">
+                          {activityTypes.map((type) => (
+                            <button
+                              key={type.id}
+                              onClick={() => {
+                                setActivityFilter(type.id);
+                                setShowActivityFilter(false);
+                              }}
+                              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
+                                activityFilter === type.id 
+                                  ? 'bg-indigo-50 text-indigo-600' 
+                                  : 'hover:bg-slate-50 text-slate-700'
+                              }`}
+                            >
+                              <Icon name={type.icon} className="w-4 h-4" />
+                              <span className="text-xs font-medium">{type.label}</span>
+                              {activityFilter === type.id && (
+                                <Icon name="Check" className="w-4 h-4 ml-auto text-indigo-600" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {activityFilter !== 'all' && (
+                        <button
+                          onClick={clearActivityFilter}
+                          className="w-full py-2.5 text-center text-xs font-bold text-slate-500 hover:text-indigo-600 border-t border-slate-100 pt-3"
+                        >
+                          <Icon name="X" className="w-3 h-3 inline mr-2" />
+                          Clear Filter
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {/* Active Filter Badge */}
+              {activityFilter !== 'all' && (
+                <div className="absolute bottom-3 left-8">
+                  <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                    <Icon name={activityTypes.find(t => t.id === activityFilter)?.icon || 'Filter'} className="w-3 h-3" />
+                    {activityTypes.find(t => t.id === activityFilter)?.label}
+                    <button
+                      onClick={clearActivityFilter}
+                      className="ml-1 hover:text-indigo-800"
+                    >
+                      <Icon name="X" className="w-3 h-3" />
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
+            
             <div className="divide-y divide-slate-50">
-              {activities.slice(0, 5).map((activity) => (
+              {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
                 <div key={activity.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center gap-6 group">
-                  <div className={`p-4 rounded-2xl transition-all group-hover:scale-110 group-hover:shadow-lg ${activity.type === 'checkin' ? 'bg-emerald-50 text-emerald-600' :
+                  <div className={`p-4 rounded-2xl transition-all group-hover:scale-110 group-hover:shadow-lg ${activity.type === 'checkin' || activity.type === 'checkout' ? 'bg-emerald-50 text-emerald-600' :
                     activity.type === 'leave' ? 'bg-amber-50 text-amber-600' :
+                    activity.type === 'document' ? 'bg-blue-50 text-blue-600' :
                       'bg-indigo-50 text-indigo-600'
                     }`}>
                     <Icon name={
                       activity.type === 'checkin' ? 'Zap' :
-                        activity.type === 'leave' ? 'Clock' :
-                          'ShieldCheck'
+                      activity.type === 'checkout' ? 'LogOut' :
+                      activity.type === 'leave' ? 'Calendar' :
+                      activity.type === 'document' ? 'FileText' :
+                        'UserCog'
                     } className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
@@ -212,6 +321,9 @@ const Dashboard: React.FC = () => {
                     <div className="flex items-center gap-2 mt-1">
                       <Icon name="Clock" className="w-3 h-3 text-slate-300" />
                       <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{activity.time}</p>
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter bg-slate-100 text-slate-500">
+                        {activity.type}
+                      </span>
                     </div>
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all">
@@ -223,7 +335,27 @@ const Dashboard: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="p-10 text-center">
+                  <div className="inline-flex p-4 bg-slate-50 rounded-2xl mb-4">
+                    <Icon name="FilterX" className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-400 mb-1">No activities found</p>
+                  <p className="text-xs text-slate-300">
+                    {activityFilter !== 'all' 
+                      ? `No ${activityTypes.find(t => t.id === activityFilter)?.label.toLowerCase()} in the feed`
+                      : 'No recent activities to display'}
+                  </p>
+                  {activityFilter !== 'all' && (
+                    <button
+                      onClick={clearActivityFilter}
+                      className="mt-4 px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
+                    >
+                      Show All Activities
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -289,7 +421,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* My Payslips Widget (New) */}
+          {/* My Payslips Widget */}
           <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -300,7 +432,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="space-y-3">
               {userPayslips.length > 0 ? userPayslips.slice(0, 3).map(ps => (
-                <div key={ps.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:bg-white hover;border-emerald-200 transition-all group flex items-center justify-between">
+                <div key={ps.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:bg-white hover:border-emerald-200 transition-all group flex items-center justify-between">
                   <div>
                     <p className="text-xs font-black text-slate-800">{ps.month} {ps.year}</p>
                     <p className="text-[10px] font-bold text-emerald-600 mt-0.5">₹{ps.netPay.toLocaleString()}</p>
@@ -334,7 +466,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
               {pendingLeaves.length > 0 ? pendingLeaves.map((item) => (
-                <div key={item.id} className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 hover;border-indigo-200 hover:bg-white transition-all group">
+                <div key={item.id} className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:bg-white transition-all group">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-400 text-xs shadow-sm">

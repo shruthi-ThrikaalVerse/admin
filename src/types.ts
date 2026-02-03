@@ -264,4 +264,4 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
   timestamp: string;
-}
+} 
