@@ -82,7 +82,7 @@ const EmployeeHub: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Staffing Repository</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Employee Repository</h1>
           <p className="text-slate-500 text-sm font-medium">Record keeping for {employees.length} verified personnel.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -93,7 +93,7 @@ const EmployeeHub: React.FC = () => {
             onClick={() => setAddModalOpen(true)}
             className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 transition-all active:scale-95"
           >
-            <Icon name="Plus" className="w-5 h-5" /> Enroll Staff
+            <Icon name="Plus" className="w-5 h-5" /> Add Employee
           </button>
         </div>
       </div>
@@ -275,7 +275,7 @@ const EmployeeHub: React.FC = () => {
                    </div>
                    <div className="flex items-center justify-between">
                       <div>
-                         <p className="text-[9px] font-bold uppercase opacity-50">System Password</p>
+                         <p className="text-[9px] font-bold uppercase opacity-50">Login Password</p>
                          <div className="flex items-center gap-2">
                             <p className="text-sm font-black tracking-widest">
                                {showPassword ? selectedEmployee.password : '••••••••••••'}
