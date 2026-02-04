@@ -7,16 +7,8 @@ export const COLORS = {
 };
 
 export const DEPARTMENTS = [
-  'Engineering',
-  'Human Resources',
-  'Marketing',
-  'Sales',
-  'Finance',
-  'Operations',
-  'Customer Support',
-  'Product Management',
-  'Design',
-  'Legal'
+  'RESEARCH AND DEVELOPMENT',
+  'FULL STACK DEVELOPER',
 ];
 
 export const TEAMS = [

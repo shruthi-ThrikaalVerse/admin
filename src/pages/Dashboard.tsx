@@ -81,11 +81,11 @@ const Dashboard: React.FC = () => {
 
   const filteredActivities = useMemo(() => {
     let filtered = [...activities];
-    
+
     if (activityFilter !== 'all') {
       filtered = filtered.filter(activity => activity.type === activityFilter);
     }
-    
+
     return filtered
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, 5);
@@ -216,26 +216,25 @@ const Dashboard: React.FC = () => {
                 <h2 className="text-xl font-bold text-slate-900">Live Activity Feed</h2>
                 <p className="text-xs text-slate-400 font-medium">Real-time sync from across the organization.</p>
               </div>
-              
+
               <div className="relative">
                 <button
                   onClick={() => setShowActivityFilter(!showActivityFilter)}
-                  className={`p-3 rounded-2xl transition-all flex items-center gap-2 ${
-                    showActivityFilter || activityFilter !== 'all' 
-                      ? 'bg-indigo-50 text-indigo-600 shadow-sm' 
-                      : 'bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600'
-                  }`}
+                  className={`p-3 rounded-2xl transition-all flex items-center gap-2 ${showActivityFilter || activityFilter !== 'all'
+                    ? 'bg-indigo-50 text-indigo-600 shadow-sm'
+                    : 'bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600'
+                    }`}
                 >
                   <Icon name="Filter" className="w-5 h-5" />
                   {activityFilter !== 'all' && (
                     <span className="w-2 h-2 bg-indigo-600 rounded-full"></span>
                   )}
                 </button>
-                
+
                 {/* Filter Popover */}
                 {showActivityFilter && (
                   <>
-                    <div 
+                    <div
                       className="fixed inset-0 z-10"
                       onClick={() => setShowActivityFilter(false)}
                     />
@@ -250,11 +249,10 @@ const Dashboard: React.FC = () => {
                                 setActivityFilter(type.id);
                                 setShowActivityFilter(false);
                               }}
-                              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${
-                                activityFilter === type.id 
-                                  ? 'bg-indigo-50 text-indigo-600' 
-                                  : 'hover:bg-slate-50 text-slate-700'
-                              }`}
+                              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left transition-colors ${activityFilter === type.id
+                                ? 'bg-indigo-50 text-indigo-600'
+                                : 'hover:bg-slate-50 text-slate-700'
+                                }`}
                             >
                               <Icon name={type.icon} className="w-4 h-4" />
                               <span className="text-xs font-medium">{type.label}</span>
@@ -265,7 +263,7 @@ const Dashboard: React.FC = () => {
                           ))}
                         </div>
                       </div>
-                      
+
                       {activityFilter !== 'all' && (
                         <button
                           onClick={clearActivityFilter}
@@ -279,7 +277,7 @@ const Dashboard: React.FC = () => {
                   </>
                 )}
               </div>
-              
+
               {/* Active Filter Badge */}
               {activityFilter !== 'all' && (
                 <div className="absolute bottom-3 left-8">
@@ -296,21 +294,21 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="divide-y divide-slate-50">
               {filteredActivities.length > 0 ? filteredActivities.map((activity) => (
                 <div key={activity.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center gap-6 group">
                   <div className={`p-4 rounded-2xl transition-all group-hover:scale-110 group-hover:shadow-lg ${activity.type === 'checkin' || activity.type === 'checkout' ? 'bg-emerald-50 text-emerald-600' :
                     activity.type === 'leave' ? 'bg-amber-50 text-amber-600' :
-                    activity.type === 'document' ? 'bg-blue-50 text-blue-600' :
-                      'bg-indigo-50 text-indigo-600'
+                      activity.type === 'document' ? 'bg-blue-50 text-blue-600' :
+                        'bg-indigo-50 text-indigo-600'
                     }`}>
                     <Icon name={
                       activity.type === 'checkin' ? 'Zap' :
-                      activity.type === 'checkout' ? 'LogOut' :
-                      activity.type === 'leave' ? 'Calendar' :
-                      activity.type === 'document' ? 'FileText' :
-                        'UserCog'
+                        activity.type === 'checkout' ? 'LogOut' :
+                          activity.type === 'leave' ? 'Calendar' :
+                            activity.type === 'document' ? 'FileText' :
+                              'UserCog'
                     } className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
@@ -342,7 +340,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <p className="text-sm font-bold text-slate-400 mb-1">No activities found</p>
                   <p className="text-xs text-slate-300">
-                    {activityFilter !== 'all' 
+                    {activityFilter !== 'all'
                       ? `No ${activityTypes.find(t => t.id === activityFilter)?.label.toLowerCase()} in the feed`
                       : 'No recent activities to display'}
                   </p>

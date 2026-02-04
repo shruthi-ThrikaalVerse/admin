@@ -12,7 +12,7 @@ const Icon = ({ name, className }: { name: string; className?: string }) => {
 const Modal = ({ isOpen, onClose, title, children }: any) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
       <div className={`bg-white rounded-[32px] w-full max-w-2xl relative shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]`}>
         <div className="p-8 border-b flex items-center justify-between bg-white sticky top-0 z-10">
@@ -25,6 +25,57 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
       </div>
     </div>
   );
+};
+
+// Colorful gradient backgrounds for each event type
+const EVENT_GRADIENTS = {
+  holiday: 'bg-gradient-to-br from-rose-500/20 via-pink-400/15 to-red-400/10 border-rose-200/60 shadow-rose-100/30',
+  training: 'bg-gradient-to-br from-indigo-500/20 via-purple-400/15 to-violet-400/10 border-indigo-200/60 shadow-indigo-100/30',
+  meeting: 'bg-gradient-to-br from-blue-500/20 via-cyan-400/15 to-teal-400/10 border-blue-200/60 shadow-blue-100/30',
+  company: 'bg-gradient-to-br from-emerald-500/20 via-green-400/15 to-lime-400/10 border-emerald-200/60 shadow-emerald-100/30',
+  team: 'bg-gradient-to-br from-amber-500/20 via-orange-400/15 to-yellow-400/10 border-amber-200/60 shadow-amber-100/30'
+};
+
+// Badge colors for each event type
+const EVENT_BADGE_STYLES = {
+  holiday: 'bg-gradient-to-r from-rose-600 via-pink-500 to-rose-500 text-white border-rose-400/40',
+  training: 'bg-gradient-to-r from-indigo-600 via-purple-500 to-indigo-500 text-white border-indigo-400/40',
+  meeting: 'bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 text-white border-blue-400/40',
+  company: 'bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-500 text-white border-emerald-400/40',
+  team: 'bg-gradient-to-r from-amber-600 via-orange-500 to-amber-500 text-white border-amber-400/40'
+};
+
+// Time badge colors
+const TIME_BADGE_STYLES = {
+  holiday: 'bg-gradient-to-r from-rose-500/30 to-pink-400/30 text-rose-800 border-rose-300/60',
+  training: 'bg-gradient-to-r from-indigo-500/30 to-purple-400/30 text-indigo-800 border-indigo-300/60',
+  meeting: 'bg-gradient-to-r from-blue-500/30 to-cyan-400/30 text-blue-800 border-blue-300/60',
+  company: 'bg-gradient-to-r from-emerald-500/30 to-green-400/30 text-emerald-800 border-emerald-300/60',
+  team: 'bg-gradient-to-r from-amber-500/30 to-orange-400/30 text-amber-800 border-amber-300/60'
+};
+
+// Status colors
+const STATUS_COLORS = {
+  upcoming: 'bg-gradient-to-r from-emerald-500/20 to-green-400/20 text-emerald-700 border-emerald-400/40',
+  ongoing: 'bg-gradient-to-r from-blue-500/20 to-cyan-400/20 text-blue-700 border-blue-400/40',
+  completed: 'bg-gradient-to-r from-slate-500/20 to-slate-400/20 text-slate-700 border-slate-400/40',
+  cancelled: 'bg-gradient-to-r from-rose-500/20 to-pink-400/20 text-rose-700 border-rose-400/40'
+};
+
+// Priority colors
+const PRIORITY_BADGE_STYLES = {
+  normal: 'bg-gradient-to-r from-slate-500/20 to-slate-400/20 text-slate-700 border-slate-400/40',
+  important: 'bg-gradient-to-r from-amber-500/20 to-orange-400/20 text-amber-700 border-amber-400/40',
+  critical: 'bg-gradient-to-r from-rose-500/20 to-red-400/20 text-rose-700 border-rose-400/40'
+};
+
+// Emojis for event types
+const EVENT_EMOJIS = {
+  holiday: '🎉',
+  training: '📚',
+  meeting: '🤝',
+  company: '🏢',
+  team: '👥'
 };
 
 const EventsAdmin: React.FC = () => {
@@ -138,16 +189,6 @@ const EventsAdmin: React.FC = () => {
     });
   };
 
-  const getTypeStyle = (type: EventType) => {
-    switch (type) {
-      case 'holiday': return 'bg-rose-50 text-rose-600 border-rose-100';
-      case 'training': return 'bg-indigo-50 text-indigo-600 border-indigo-100';
-      case 'meeting': return 'bg-blue-50 text-blue-600 border-blue-100';
-      case 'company': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      default: return 'bg-slate-50 text-slate-600 border-slate-100';
-    }
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -156,26 +197,30 @@ const EventsAdmin: React.FC = () => {
           <p className="text-slate-500 text-sm font-medium">Coordinate corporate milestones, training cycles and team meetups.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex bg-white p-1 rounded-2xl border border-slate-100 shadow-sm mr-2">
+          <div className="flex bg-gradient-to-r from-indigo-100/50 to-purple-100/50 p-1 rounded-2xl border border-indigo-100/30 shadow-sm mr-2">
             <button
               onClick={() => setViewTab('board')}
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewTab === 'board' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-            >Board</button>
+              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewTab === 'board' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-600'}`}
+            >
+              📊 Board
+            </button>
             <button
               onClick={() => setViewTab('list')}
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewTab === 'list' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-            >Upcomming</button>
+              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewTab === 'list' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-600'}`}
+            >
+              📅 Upcoming
+            </button>
           </div>
           <button
             onClick={() => { resetForm(); setIsModalOpen(true); }}
-            className="flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 transition-all active:scale-95"
+            className="flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-500 text-white rounded-2xl hover:opacity-90 hover:shadow-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-purple-200 transition-all active:scale-95"
           >
             <Icon name="Plus" className="w-5 h-5" /> Schedule Event
           </button>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-6">
+      <div className="bg-gradient-to-br from-white via-indigo-50/20 to-purple-50/20 p-6 rounded-[32px] border border-slate-100/50 shadow-sm space-y-6">
         <div className="relative group w-full">
           <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
           <input
@@ -184,94 +229,142 @@ const EventsAdmin: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Lookup by event title or description..."
-            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-600 shadow-inner"
+            className="w-full pl-12 pr-6 py-4 bg-white/50 backdrop-blur-sm border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-600 shadow-inner"
           />
         </div>
 
         {viewTab === 'board' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredEvents.length > 0 ? filteredEvents.map(evt => (
-              <div key={evt.id} className="bg-white border border-slate-100 rounded-[32px] p-6 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all group flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getTypeStyle(evt.type)}`}>
-                    {evt.type}
-                  </span>
-                  <div className="flex gap-1">
-                    <button aria-label={`Edit event ${evt.title}`} onClick={() => handleEdit(evt)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors"><Icon name="Edit3" className="w-4 h-4" /></button>
-                    <button aria-label={`Delete event ${evt.title}`} onClick={() => deleteEvent(evt.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><Icon name="Trash2" className="w-4 h-4" /></button>
+            {filteredEvents.length > 0 ? filteredEvents.map(evt => {
+              const eventGradient = EVENT_GRADIENTS[evt.type] || EVENT_GRADIENTS.company;
+              const eventBadgeStyle = EVENT_BADGE_STYLES[evt.type] || EVENT_BADGE_STYLES.company;
+              const timeBadgeStyle = TIME_BADGE_STYLES[evt.type] || TIME_BADGE_STYLES.company;
+
+              return (
+                <div key={evt.id} className={`border rounded-[32px] p-6 hover:shadow-2xl hover:scale-[1.02] transition-all group flex flex-col justify-between relative overflow-hidden backdrop-blur-sm ${eventGradient}`}>
+                  {/* Animated pattern overlay */}
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-current to-transparent rounded-full -translate-y-16 translate-x-16"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-current to-transparent rounded-full translate-y-12 -translate-x-12"></div>
                   </div>
-                </div>
 
-                <h3 className="text-lg font-black text-slate-900 leading-tight mb-2 truncate">{evt.title}</h3>
-                <p className="text-xs text-slate-400 font-medium mb-6 line-clamp-2">{evt.description}</p>
-
-                <div className="space-y-4 mt-auto">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1">Schedule</p>
-                      <p className="text-[10px] font-black text-slate-700">{evt.startDate}</p>
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-md ${eventBadgeStyle}`}>
+                          {EVENT_EMOJIS[evt.type]} {evt.type}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border shadow-md ${PRIORITY_BADGE_STYLES[evt.priority || 'normal']}`}>
+                          {evt.priority || 'normal'}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button aria-label={`Edit event ${evt.title}`} onClick={() => handleEdit(evt)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white/50 transition-all rounded-xl">
+                          <Icon name="Edit3" className="w-4 h-4" />
+                        </button>
+                        <button aria-label={`Delete event ${evt.id}`} onClick={() => deleteEvent(evt.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-white/50 transition-all rounded-xl">
+                          <Icon name="Trash2" className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-1">Time</p>
-                      <p className="text-[10px] font-black text-slate-700">{evt.startTime}</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 p-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
-                    <Icon name={evt.isOnline ? "Video" : "MapPin"} className="w-4 h-4 text-indigo-600" />
-                    <p className="text-[10px] font-bold text-indigo-900 truncate">{evt.location}</p>
-                  </div>
+                    <h3 className="text-lg font-black text-slate-900 leading-tight mb-2 truncate">{evt.title}</h3>
+                    <p className="text-xs text-slate-700 font-medium mb-6 line-clamp-2">{evt.description}</p>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                    {evt.participations && evt.participations.length > 0 && (
-                      <div className="flex -space-x-2">
-                        <div className="w-6 h-6 rounded-full border-2 border-white bg-indigo-600 flex items-center justify-center text-[8px] font-black text-white">
-                          +{evt.participations.length}
+                    <div className="space-y-4 mt-auto">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-sm">
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">📅 Schedule</p>
+                          <p className="text-[10px] font-black text-slate-800">{evt.startDate}</p>
+                        </div>
+                        <div className={`p-3 rounded-2xl border shadow-sm ${timeBadgeStyle}`}>
+                          <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">⏰ Time</p>
+                          <p className="text-[10px] font-black text-slate-900">{evt.startTime}</p>
                         </div>
                       </div>
-                    )}
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${evt.status === 'upcoming' ? 'text-emerald-500' : 'text-slate-400'}`}>
-                      {evt.status}
-                    </span>
+
+                      <div className="flex items-center gap-2 p-3 bg-white/60 backdrop-blur-sm border border-white/50 rounded-2xl shadow-sm">
+                        <Icon name={evt.isOnline ? "Video" : "MapPin"} className={`w-4 h-4 ${evt.isOnline ? 'text-blue-600' : 'text-emerald-600'}`} />
+                        <p className="text-[10px] font-bold text-slate-800 truncate">{evt.location}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-white/30">
+                        {evt.participations && evt.participations.length > 0 && (
+                          <div className="flex -space-x-2">
+                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-[8px] font-black text-white shadow-md">
+                              +{evt.participations.length}
+                            </div>
+                          </div>
+                        )}
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${STATUS_COLORS[evt.status] || STATUS_COLORS.upcoming}`}>
+                          {evt.status}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )) : (
+              );
+            }) : (
               <div className="col-span-full py-24 text-center">
-                <Icon name="CalendarOff" className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                <p className="text-gray-400 font-black uppercase text-xs tracking-widest">Zero scheduled events found.</p>
+                <div className="w-24 h-24 bg-gradient-to-br from-indigo-100/50 to-purple-100/50 rounded-[32px] flex items-center justify-center mx-auto mb-6">
+                  <Icon name="CalendarOff" className="w-12 h-12 text-indigo-300" />
+                </div>
+                <p className="text-slate-400 font-black uppercase text-xs tracking-widest">Zero scheduled events found.</p>
+                <p className="text-slate-300 text-[10px] font-medium mt-2">Try changing your search or schedule a new event</p>
               </div>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-[24px] border border-slate-50">
+          <div className="overflow-x-auto rounded-[24px] border border-slate-100/50 backdrop-blur-sm">
             <table className="w-full text-left">
-              <thead className="bg-slate-50/50">
-                <tr className="border-b border-slate-100">
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Event</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Target</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+              <thead className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
+                <tr className="border-b border-slate-100/50">
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-600 uppercase tracking-widest">🎯 Event</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-600 uppercase tracking-widest">👥 Target</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-600 uppercase tracking-widest">📊 Status</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-slate-600 uppercase tracking-widest text-right">⚡ Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredEvents.map(evt => (
-                  <tr key={evt.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-black text-slate-800">{evt.title}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">{evt.startDate} • {evt.startTime}</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-slate-100 rounded-lg">{evt.audience}</span>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{evt.status}</span>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <button aria-label={`Edit event ${evt.title}`} onClick={() => handleEdit(evt)} className="p-2 text-slate-300 hover:text-indigo-600"><Icon name="Settings" className="w-4 h-4" /></button>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-50/50">
+                {filteredEvents.map(evt => {
+                  const eventColor = EVENT_BADGE_STYLES[evt.type] || EVENT_BADGE_STYLES.company;
+
+                  return (
+                    <tr key={evt.id} className="hover:bg-white/50 transition-colors group">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shadow-md ${eventColor}`}>
+                            {EVENT_EMOJIS[evt.type]}
+                          </span>
+                          <div>
+                            <p className="text-sm font-black text-slate-800">{evt.title}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase">{evt.startDate} • {evt.startTime}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm ${eventColor}`}>
+                          {evt.audience}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm ${STATUS_COLORS[evt.status] || STATUS_COLORS.upcoming}`}>
+                          {evt.status}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button aria-label={`Edit event ${evt.title}`} onClick={() => handleEdit(evt)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-xl transition-all">
+                            <Icon name="Settings" className="w-4 h-4" />
+                          </button>
+                          <button aria-label={`Delete event ${evt.id}`} onClick={() => deleteEvent(evt.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 rounded-xl transition-all">
+                            <Icon name="Trash2" className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -281,7 +374,7 @@ const EventsAdmin: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Modify Schedule" : "New Organization Event"}>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Event Title</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">🎯 Event Title</label>
             <input
               required
               className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 shadow-inner"
@@ -292,7 +385,7 @@ const EventsAdmin: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">📝 Description</label>
             <textarea
               required
               className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 min-h-[100px] shadow-inner"
@@ -304,26 +397,32 @@ const EventsAdmin: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">🏷️ Category</label>
               <select
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
                 value={formData.type}
                 onChange={e => setFormData({ ...formData, type: e.target.value as any })}
                 title="Select event category"
               >
-                {['company', 'team', 'training', 'meeting', 'holiday'].map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                <option value="company">🏢 Company Event</option>
+                <option value="team">👥 Team Event</option>
+                <option value="training">📚 Training Session</option>
+                <option value="meeting">🤝 Meeting</option>
+                <option value="holiday">🎉 Holiday</option>
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Criticality</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">⚠️ Criticality</label>
               <div className="flex gap-2">
-                {(['normal', 'important'] as EventPriority[]).map(p => (
+                {(['normal', 'important', 'critical'] as EventPriority[]).map(p => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setFormData({ ...formData, priority: p })}
-                    className={`flex-1 py-2.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${formData.priority === p ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white text-slate-400 border-slate-100'}`}
-                  >{p}</button>
+                    className={`flex-1 py-2.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${formData.priority === p ? PRIORITY_BADGE_STYLES[p] : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'}`}
+                  >
+                    {p}
+                  </button>
                 ))}
               </div>
             </div>
@@ -331,46 +430,46 @@ const EventsAdmin: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">📅 Start Date</label>
               <input
                 aria-label="Start date"
                 type="date" required
                 min={todayISO}
-                className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600"
+                className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
                 value={formData.startDate}
                 onChange={e => setFormData({ ...formData, startDate: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Time</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">⏰ Start Time</label>
               <input
                 type="text" required
                 placeholder="09:00 AM"
-                className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600"
+                className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
                 value={formData.startTime}
                 onChange={e => setFormData({ ...formData, startTime: e.target.value })}
               />
             </div>
           </div>
 
-          <div className="p-6 bg-slate-50 rounded-[28px] border border-slate-100 space-y-4">
+          <div className="p-6 bg-gradient-to-br from-slate-50 to-indigo-50/30 rounded-[28px] border border-slate-100 space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mode & Location</label>
+              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">📍 Mode & Location</label>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black uppercase text-slate-400">Virtual Event</span>
+                <span className="text-[9px] font-black uppercase text-slate-500">Virtual Event</span>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, isOnline: !formData.isOnline })}
-                  className={`w-10 h-5 rounded-full relative transition-colors ${formData.isOnline ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                  className={`w-10 h-5 rounded-full relative transition-colors shadow-sm ${formData.isOnline ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-slate-300'}`}
                   aria-label="Toggle virtual event mode"
                 >
-                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${formData.isOnline ? 'left-6' : 'left-1'}`}></div>
+                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all shadow-sm ${formData.isOnline ? 'left-6' : 'left-1'}`}></div>
                 </button>
               </div>
             </div>
             <input
               required
-              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-700"
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-700 shadow-inner"
               placeholder={formData.isOnline ? "Meeting Link (Zoom/Google Meet)" : "Physical Address / Room No."}
               value={formData.location}
               onChange={e => setFormData({ ...formData, location: e.target.value })}
@@ -378,15 +477,17 @@ const EventsAdmin: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Audience Scope</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">👥 Audience Scope</label>
             <div className="flex gap-2">
               {(['all', 'selected', 'department'] as EventAudience[]).map(a => (
                 <button
                   key={a}
                   type="button"
                   onClick={() => setFormData({ ...formData, audience: a, targetEmployeeIds: [], targetDepartment: '' })}
-                  className={`flex-1 py-3 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${formData.audience === a ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border-slate-100'}`}
-                >{a}</button>
+                  className={`flex-1 py-3 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${formData.audience === a ? 'bg-gradient-to-r from-indigo-600 to-purple-600 border-transparent text-white shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'}`}
+                >
+                  {a}
+                </button>
               ))}
             </div>
 
@@ -395,17 +496,17 @@ const EventsAdmin: React.FC = () => {
                 <div className="relative">
                   <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
                   <input
-                    type="text" placeholder="Filter employees..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none"
+                    type="text" placeholder="🔍 Filter employees..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none shadow-inner"
                     value={empSearch}
                     onChange={e => setEmpSearch(e.target.value)}
                   />
                 </div>
-                <div className="max-h-[150px] overflow-y-auto custom-scrollbar divide-y divide-slate-50 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="max-h-[150px] overflow-y-auto custom-scrollbar divide-y divide-slate-50 bg-slate-50 rounded-xl border border-slate-100 shadow-inner">
                   {filteredEmployees.map(emp => (
                     <div key={emp.id} onClick={() => toggleEmployeeSelection(emp.id)} className="p-2.5 flex items-center justify-between cursor-pointer hover:bg-white transition-colors group">
                       <span className="text-[10px] font-bold text-slate-700">{emp.fullName} ({emp.employeeId})</span>
-                      <div className={`w-4 h-4 rounded-md border-2 transition-all flex items-center justify-center ${formData.targetEmployeeIds?.includes(emp.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-transparent group-hover:border-indigo-200'}`}>
+                      <div className={`w-4 h-4 rounded-md border-2 transition-all flex items-center justify-center shadow-sm ${formData.targetEmployeeIds?.includes(emp.id) ? 'bg-gradient-to-r from-indigo-600 to-purple-600 border-transparent text-white' : 'bg-white border-slate-200 text-transparent group-hover:border-indigo-200'}`}>
                         <Icon name="Check" className="w-2.5 h-2.5" />
                       </div>
                     </div>
@@ -421,7 +522,7 @@ const EventsAdmin: React.FC = () => {
                 value={formData.targetDepartment}
                 onChange={e => setFormData({ ...formData, targetDepartment: e.target.value })}
               >
-                <option value="">Select Target Unit</option>
+                <option value="">🎯 Select Target Unit</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             )}
@@ -429,7 +530,9 @@ const EventsAdmin: React.FC = () => {
 
           <div className="pt-6 border-t border-slate-100 flex gap-4">
             <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Discard</button>
-            <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">Commit To Calendar</button>
+            <button type="submit" className="flex-1 py-4 bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-500 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-100 hover:opacity-90 transition-all active:scale-95">
+              📅 Commit To Calendar
+            </button>
           </div>
         </form>
       </Modal>
