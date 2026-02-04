@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useHRMS } from '../context/HRMSContext';
 import { Task, AssigneeType, TaskPriority, CustomTeam } from '../types';
@@ -23,6 +23,370 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
         </div>
         <div className="p-8 overflow-y-auto custom-scrollbar flex-1">{children}</div>
       </div>
+    </div>
+  );
+};
+
+// Custom DatePicker Component
+const DatePicker = ({
+  value,
+  onChange,
+  id,
+  label,
+  minDate,
+  required = false
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  id: string;
+  label: string;
+  minDate?: string;
+  required?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'days' | 'months' | 'years'>('days');
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Get current date in YYYY-MM-DD format
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+  // Get max reasonable date (current year + 1 year)
+  const getMaxReasonableDate = () => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 1);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Safe date parsing
+  const safeParseDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+
+      // Check if year is reasonable (between current year -1 and current year + 1)
+      const currentYear = new Date().getFullYear();
+      const year = date.getFullYear();
+      if (year < currentYear - 1 || year > currentYear + 1) {
+        return new Date();
+      }
+
+      return date;
+    } catch {
+      return new Date();
+    }
+  };
+
+  const selectedDate = value ? safeParseDate(value) : null;
+  const today = new Date();
+  const maxReasonable = getMaxReasonableDate();
+
+  // Get days in month
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  // Get month name
+  const getMonthName = (month: number) => {
+    return new Date(2000, month, 1).toLocaleString('default', { month: 'long' });
+  };
+
+  // Get years for year view
+  const getYearRange = () => {
+    const currentYear = currentDate.getFullYear();
+    const startYear = currentYear - 1;
+    return Array.from({ length: 3 }, (_, i) => startYear + i);
+  };
+
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = new Date(year, month, 1).getDay();
+
+    const days = [];
+
+    // Previous month days
+    const prevMonthDays = getDaysInMonth(year, month - 1);
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        date: new Date(year, month - 1, prevMonthDays - i),
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+
+    // Current month days
+    const todayStr = today.toISOString().split('T')[0];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      days.push({
+        date,
+        isCurrentMonth: true,
+        isToday: dateStr === todayStr
+      });
+    }
+
+    // Next month days
+    const totalCells = 42; // 6 weeks
+    const nextMonthDays = totalCells - days.length;
+    for (let day = 1; day <= nextMonthDays; day++) {
+      days.push({
+        date: new Date(year, month + 1, day),
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+
+    return days;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    onChange(dateStr);
+    setIsOpen(false);
+    setView('days');
+  };
+
+  const handleMonthSelect = (monthIndex: number) => {
+    setCurrentDate(new Date(currentDate.getFullYear(), monthIndex, 1));
+    setView('days');
+  };
+
+  const handleYearSelect = (year: number) => {
+    setCurrentDate(new Date(year, currentDate.getMonth(), 1));
+    setView('months');
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = safeParseDate(dateStr);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setView('days');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="space-y-2 relative" ref={datePickerRef}>
+      <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+        {label} {required && '*'}
+      </label>
+
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          readOnly
+          value={value ? formatDisplayDate(value) : ''}
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 cursor-pointer caret-transparent shadow-inner"
+          placeholder="Select deadline"
+          required={required}
+        />
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+        >
+          <Icon name="Calendar" className="w-4 h-4" />
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 z-50 w-full bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 animate-in zoom-in-95 duration-200">
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (view === 'days') {
+                  setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+                } else if (view === 'months') {
+                  setCurrentDate(new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1));
+                } else {
+                  setCurrentDate(new Date(currentDate.getFullYear() - 3, currentDate.getMonth(), 1));
+                }
+              }}
+              className="p-2 hover:bg-slate-50 rounded-xl transition-colors"
+            >
+              <Icon name="ChevronLeft" className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (view === 'days') {
+                  setView('months');
+                } else if (view === 'months') {
+                  setView('years');
+                }
+              }}
+              className="px-4 py-2 font-black text-sm hover:bg-slate-50 rounded-xl transition-colors"
+            >
+              {view === 'days' && (
+                <>
+                  {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
+                </>
+              )}
+              {view === 'months' && (
+                <>{currentDate.getFullYear()}</>
+              )}
+              {view === 'years' && (
+                <>{getYearRange()[0]} - {getYearRange()[2]}</>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (view === 'days') {
+                  setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+                } else if (view === 'months') {
+                  setCurrentDate(new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), 1));
+                } else {
+                  setCurrentDate(new Date(currentDate.getFullYear() + 3, currentDate.getMonth(), 1));
+                }
+              }}
+              className="p-2 hover:bg-slate-50 rounded-xl transition-colors"
+            >
+              <Icon name="ChevronRight" className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Days View */}
+          {view === 'days' && (
+            <>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                  <div key={day} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {generateCalendarDays().map((dayObj, index) => {
+                  const dayStr = dayObj.date.toISOString().split('T')[0];
+                  const isSelected = selectedDate && selectedDate.toISOString().split('T')[0] === dayStr;
+                  const isPastDate = dayObj.date < today;
+                  const isValidDate = !isPastDate && dayObj.date <= new Date(maxReasonable);
+
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => isValidDate && handleDateSelect(dayObj.date)}
+                      disabled={!isValidDate}
+                      className={`
+                        p-2 rounded-xl text-sm font-medium transition-all
+                        ${dayObj.isCurrentMonth ? 'text-slate-700' : 'text-slate-300'}
+                        ${dayObj.isToday ? 'bg-indigo-50 text-indigo-600 font-black' : ''}
+                        ${isSelected ? 'bg-indigo-600 text-white font-black' : ''}
+                        ${!isSelected && !dayObj.isToday ? 'hover:bg-slate-50' : ''}
+                        ${!dayObj.isCurrentMonth || !isValidDate ? 'cursor-default opacity-50' : ''}
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                      `}
+                    >
+                      {dayObj.date.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => handleDateSelect(today)}
+                  className="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  Today
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Months View */}
+          {view === 'months' && (
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 12 }, (_, i) => i).map((monthIndex) => {
+                const monthDate = new Date(currentDate.getFullYear(), monthIndex, 1);
+                const isSelected = selectedDate &&
+                  selectedDate.getFullYear() === monthDate.getFullYear() &&
+                  selectedDate.getMonth() === monthIndex;
+
+                return (
+                  <button
+                    key={monthIndex}
+                    type="button"
+                    onClick={() => handleMonthSelect(monthIndex)}
+                    className={`
+                      p-3 rounded-xl text-sm font-medium text-center transition-all
+                      ${isSelected ? 'bg-indigo-600 text-white font-black' : 'text-slate-700 hover:bg-slate-50'}
+                    `}
+                  >
+                    {getMonthName(monthIndex).slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Years View */}
+          {view === 'years' && (
+            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto invisible-scrollbar">
+              {getYearRange().map((year) => {
+                const yearDate = new Date(year, 0, 1);
+                const isSelected = selectedDate && selectedDate.getFullYear() === year;
+
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => handleYearSelect(year)}
+                    className={`
+                      p-3 rounded-xl text-sm font-medium text-center transition-all
+                      ${isSelected ? 'bg-indigo-600 text-white font-black' : 'text-slate-700 hover:bg-slate-50'}
+                      ${year === today.getFullYear() ? 'ring-2 ring-indigo-200' : ''}
+                    `}
+                  >
+                    {year}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -110,6 +474,29 @@ const Tasks: React.FC = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // Safe date parsing for display
+  const safeParseDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+      return date;
+    } catch {
+      return new Date();
+    }
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateString: string) => {
+    const date = safeParseDate(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -120,10 +507,47 @@ const Tasks: React.FC = () => {
     });
   }, [tasks, searchTerm, filterPriority]);
 
+  // Handle form submission with validation
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    if (!newTask.title?.trim()) {
+      notify('Task title is required.', 'warning');
+      return;
+    }
+
     if (!newTask.assignedTo) {
       notify('Please select an assignee.', 'warning');
+      return;
+    }
+
+    // Validate due date
+    if (!newTask.dueDate) {
+      notify('Due date is required.', 'warning');
+      return;
+    }
+
+    const today = new Date();
+    const selectedDueDate = new Date(newTask.dueDate);
+
+    // Check if date is valid
+    if (isNaN(selectedDueDate.getTime())) {
+      notify('Invalid due date selected.', 'warning');
+      return;
+    }
+
+    // Check if date is in the future
+    if (selectedDueDate < today) {
+      notify('Please select today or a future date for the deadline.', 'warning');
+      return;
+    }
+
+    // Check if date is reasonable (not too far in the future)
+    const maxDate = new Date();
+    maxDate.setFullYear(today.getFullYear() + 1);
+    if (selectedDueDate > maxDate) {
+      notify('Due date cannot be more than 1 year in the future.', 'warning');
       return;
     }
 
@@ -136,29 +560,14 @@ const Tasks: React.FC = () => {
       assigneeName = newTask.assignedTo || 'Unknown';
     }
 
-    const today = new Date().toISOString().split('T')[0];
-
-    // If no due date is provided, calculate SLA based on priority
-    let dueDate = newTask.dueDate;
-    if (!dueDate && newTask.priority) {
-      dueDate = calculateSLADueDate(newTask.priority);
-    }
-
-    if (!dueDate) {
-      notify('Due date is required.', 'warning');
-      return;
-    }
-
-    if (dueDate < today) {
-      notify('Please select today or a future date for the deadline.', 'warning');
-      return;
-    }
-
     addTask({
       ...newTask,
       assigneeName,
-      dueDate
-    });
+      status: 'pending',
+      createdAt: new Date().toISOString().split('T')[0],
+      dueDate: newTask.dueDate || calculateSLADueDate(newTask.priority || 'p2')
+    } as Task);
+
     setIsModalOpen(false);
     setNewTask({
       title: '',
@@ -168,12 +577,19 @@ const Tasks: React.FC = () => {
       priority: 'p2',
       dueDate: calculateSLADueDate('p2')
     });
+
+    notify('Task created successfully!', 'success');
   };
 
   const handleCreateOrUpdateTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeam.name || newTeam.memberIds.length === 0) {
-      notify('Team name and at least one member are required.', 'warning');
+    if (!newTeam.name.trim()) {
+      notify('Team name is required.', 'warning');
+      return;
+    }
+
+    if (newTeam.memberIds.length === 0) {
+      notify('Please select at least one team member.', 'warning');
       return;
     }
 
@@ -181,8 +597,10 @@ const Tasks: React.FC = () => {
 
     if (editingTeamId) {
       updateCustomTeam(editingTeamId, { ...newTeam, memberNames });
+      notify('Team updated successfully!', 'success');
     } else {
       addCustomTeam({ ...newTeam, memberNames });
+      notify('Team created successfully!', 'success');
     }
 
     setIsTeamModalOpen(false);
@@ -207,10 +625,19 @@ const Tasks: React.FC = () => {
 
   // Handle priority change
   const handlePriorityChange = (priority: string) => {
+    const slaDueDate = calculateSLADueDate(priority);
     setNewTask({
       ...newTask,
       priority: priority as TaskPriority,
-      dueDate: newTask.dueDate || calculateSLADueDate(priority)
+      dueDate: slaDueDate
+    });
+  };
+
+  // Handle due date change
+  const handleDueDateChange = (dateStr: string) => {
+    setNewTask({
+      ...newTask,
+      dueDate: dateStr
     });
   };
 
@@ -314,7 +741,7 @@ const Tasks: React.FC = () => {
 
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap与外">
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-md ${priorityBadgeStyle}`}>
                           {task.priority.toUpperCase()} Priority
                         </span>
@@ -347,7 +774,7 @@ const Tasks: React.FC = () => {
                           <Icon name="Calendar" className="w-4 h-4" />
                         </div>
                         <span className={`text-[10px] font-black uppercase tracking-widest ${isOverdue ? 'text-rose-600' : 'text-slate-700'}`}>
-                          {isOverdue ? `⚠️ OVERDUE ${Math.abs(daysRemaining)}d` : `📅 Due: ${task.dueDate} (${daysRemaining}d)`}
+                          {isOverdue ? `⚠️ OVERDUE ${Math.abs(daysRemaining)}d` : `📅 Due: ${formatDisplayDate(task.dueDate)} (${daysRemaining}d)`}
                         </span>
                       </div>
                       <select
@@ -406,7 +833,7 @@ const Tasks: React.FC = () => {
                     </div>
                   </div>
                   <h3 className="text-xl font-black text-slate-900 mb-2">{team.name}</h3>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">👥 {team.memberIds.length} members • Created {team.createdAt}</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">👥 {team.memberIds.length} members</p>
 
                   <div className="space-y-3 flex-1 mb-6">
                     <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">🌟 Team Members:</p>
@@ -460,7 +887,7 @@ const Tasks: React.FC = () => {
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Task Title</label>
             <input
               required
-              className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700"
+              className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 shadow-inner"
               placeholder="Brief summary of the objective"
               value={newTask.title}
               onChange={e => setNewTask({ ...newTask, title: e.target.value })}
@@ -470,7 +897,7 @@ const Tasks: React.FC = () => {
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Objective Description</label>
             <textarea
-              className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 min-h-[100px]"
+              className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-700 min-h-[100px] shadow-inner"
               placeholder="Provide specific details, success criteria, and context..."
               value={newTask.description}
               onChange={e => setNewTask({ ...newTask, description: e.target.value })}
@@ -544,14 +971,13 @@ const Tasks: React.FC = () => {
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Deadline</label>
               <div className="space-y-2">
-                <input
-                  aria-label="Deadline"
-                  type="date"
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-600 shadow-inner"
+                <DatePicker
+                  id="taskDueDate"
+                  label="Select Deadline"
                   value={newTask.dueDate || calculateSLADueDate(newTask.priority || 'p2')}
-                  onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  onChange={handleDueDateChange}
+                  minDate={new Date().toISOString().split('T')[0]}
+                  required={true}
                 />
                 {newTask.priority && (
                   <p className="text-[9px] font-medium text-slate-400 px-1">

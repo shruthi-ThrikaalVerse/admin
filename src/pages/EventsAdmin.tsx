@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useHRMS } from '../context/HRMSContext';
 import { AppEvent, EventType, EventStatus, EventPriority, EventAudience } from '../types';
@@ -23,6 +23,370 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
         </div>
         <div className="p-8 overflow-y-auto custom-scrollbar flex-1">{children}</div>
       </div>
+    </div>
+  );
+};
+
+// Custom DatePicker Component
+const DatePicker = ({
+  value,
+  onChange,
+  id,
+  label,
+  minDate,
+  required = false
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  id: string;
+  label: string;
+  minDate?: string;
+  required?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'days' | 'months' | 'years'>('days');
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  // Get current date in YYYY-MM-DD format
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+  // Get max reasonable date (current year + 1 year)
+  const getMaxReasonableDate = () => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 1);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Safe date parsing
+  const safeParseDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+
+      // Check if year is reasonable (between current year -1 and current year + 1)
+      const currentYear = new Date().getFullYear();
+      const year = date.getFullYear();
+      if (year < currentYear - 1 || year > currentYear + 1) {
+        return new Date();
+      }
+
+      return date;
+    } catch {
+      return new Date();
+    }
+  };
+
+  const selectedDate = value ? safeParseDate(value) : null;
+  const today = new Date();
+  const maxReasonable = getMaxReasonableDate();
+
+  // Get days in month
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  // Get month name
+  const getMonthName = (month: number) => {
+    return new Date(2000, month, 1).toLocaleString('default', { month: 'long' });
+  };
+
+  // Get years for year view
+  const getYearRange = () => {
+    const currentYear = currentDate.getFullYear();
+    const startYear = currentYear - 1;
+    return Array.from({ length: 3 }, (_, i) => startYear + i);
+  };
+
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = new Date(year, month, 1).getDay();
+
+    const days = [];
+
+    // Previous month days
+    const prevMonthDays = getDaysInMonth(year, month - 1);
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        date: new Date(year, month - 1, prevMonthDays - i),
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+
+    // Current month days
+    const todayStr = today.toISOString().split('T')[0];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      days.push({
+        date,
+        isCurrentMonth: true,
+        isToday: dateStr === todayStr
+      });
+    }
+
+    // Next month days
+    const totalCells = 42; // 6 weeks
+    const nextMonthDays = totalCells - days.length;
+    for (let day = 1; day <= nextMonthDays; day++) {
+      days.push({
+        date: new Date(year, month + 1, day),
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+
+    return days;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    onChange(dateStr);
+    setIsOpen(false);
+    setView('days');
+  };
+
+  const handleMonthSelect = (monthIndex: number) => {
+    setCurrentDate(new Date(currentDate.getFullYear(), monthIndex, 1));
+    setView('days');
+  };
+
+  const handleYearSelect = (year: number) => {
+    setCurrentDate(new Date(year, currentDate.getMonth(), 1));
+    setView('months');
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = safeParseDate(dateStr);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setView('days');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="space-y-2 relative" ref={datePickerRef}>
+      <label htmlFor={id} className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+        {label} {required && '*'}
+      </label>
+
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          readOnly
+          value={value ? formatDisplayDate(value) : ''}
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 cursor-pointer caret-transparent shadow-inner"
+          placeholder="Select date"
+          required={required}
+        />
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+        >
+          <Icon name="Calendar" className="w-4 h-4" />
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 z-50 w-full bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 animate-in zoom-in-95 duration-200">
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (view === 'days') {
+                  setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+                } else if (view === 'months') {
+                  setCurrentDate(new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1));
+                } else {
+                  setCurrentDate(new Date(currentDate.getFullYear() - 3, currentDate.getMonth(), 1));
+                }
+              }}
+              className="p-2 hover:bg-slate-50 rounded-xl transition-colors"
+            >
+              <Icon name="ChevronLeft" className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (view === 'days') {
+                  setView('months');
+                } else if (view === 'months') {
+                  setView('years');
+                }
+              }}
+              className="px-4 py-2 font-black text-sm hover:bg-slate-50 rounded-xl transition-colors"
+            >
+              {view === 'days' && (
+                <>
+                  {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
+                </>
+              )}
+              {view === 'months' && (
+                <>{currentDate.getFullYear()}</>
+              )}
+              {view === 'years' && (
+                <>{getYearRange()[0]} - {getYearRange()[2]}</>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (view === 'days') {
+                  setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+                } else if (view === 'months') {
+                  setCurrentDate(new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), 1));
+                } else {
+                  setCurrentDate(new Date(currentDate.getFullYear() + 3, currentDate.getMonth(), 1));
+                }
+              }}
+              className="p-2 hover:bg-slate-50 rounded-xl transition-colors"
+            >
+              <Icon name="ChevronRight" className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Days View */}
+          {view === 'days' && (
+            <>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                  <div key={day} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {generateCalendarDays().map((dayObj, index) => {
+                  const dayStr = dayObj.date.toISOString().split('T')[0];
+                  const isSelected = selectedDate && selectedDate.toISOString().split('T')[0] === dayStr;
+                  const isPastDate = dayObj.date < today;
+                  const isValidDate = !isPastDate && dayObj.date <= new Date(maxReasonable);
+
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => isValidDate && handleDateSelect(dayObj.date)}
+                      disabled={!isValidDate}
+                      className={`
+                        p-2 rounded-xl text-sm font-medium transition-all
+                        ${dayObj.isCurrentMonth ? 'text-slate-700' : 'text-slate-300'}
+                        ${dayObj.isToday ? 'bg-indigo-50 text-indigo-600 font-black' : ''}
+                        ${isSelected ? 'bg-indigo-600 text-white font-black' : ''}
+                        ${!isSelected && !dayObj.isToday ? 'hover:bg-slate-50' : ''}
+                        ${!dayObj.isCurrentMonth || !isValidDate ? 'cursor-default opacity-50' : ''}
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                      `}
+                    >
+                      {dayObj.date.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => handleDateSelect(today)}
+                  className="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  Today
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Months View */}
+          {view === 'months' && (
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 12 }, (_, i) => i).map((monthIndex) => {
+                const monthDate = new Date(currentDate.getFullYear(), monthIndex, 1);
+                const isSelected = selectedDate &&
+                  selectedDate.getFullYear() === monthDate.getFullYear() &&
+                  selectedDate.getMonth() === monthIndex;
+
+                return (
+                  <button
+                    key={monthIndex}
+                    type="button"
+                    onClick={() => handleMonthSelect(monthIndex)}
+                    className={`
+                      p-3 rounded-xl text-sm font-medium text-center transition-all
+                      ${isSelected ? 'bg-indigo-600 text-white font-black' : 'text-slate-700 hover:bg-slate-50'}
+                    `}
+                  >
+                    {getMonthName(monthIndex).slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Years View */}
+          {view === 'years' && (
+            <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto invisible-scrollbar">
+              {getYearRange().map((year) => {
+                const yearDate = new Date(year, 0, 1);
+                const isSelected = selectedDate && selectedDate.getFullYear() === year;
+
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => handleYearSelect(year)}
+                    className={`
+                      p-3 rounded-xl text-sm font-medium text-center transition-all
+                      ${isSelected ? 'bg-indigo-600 text-white font-black' : 'text-slate-700 hover:bg-slate-50'}
+                      ${year === today.getFullYear() ? 'ring-2 ring-indigo-200' : ''}
+                    `}
+                  >
+                    {year}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -106,6 +470,29 @@ const EventsAdmin: React.FC = () => {
     isPublished: true,
   });
 
+  // Safe date parsing for display
+  const safeParseDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return new Date();
+      }
+      return date;
+    } catch {
+      return new Date();
+    }
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateString: string) => {
+    const date = safeParseDate(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   const filteredEvents = useMemo(() => {
     return events.filter(e =>
       e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -120,32 +507,86 @@ const EventsAdmin: React.FC = () => {
     );
   }, [employees, empSearch]);
 
+  // Handle form submission with validation
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.startDate) {
-      notify('Title and start date are required.', 'warning');
+
+    // Validation
+    if (!formData.title?.trim()) {
+      notify('Event title is required.', 'warning');
       return;
     }
 
-    // Prevent selecting past start dates and ensure endDate >= startDate
-    if (formData.startDate && formData.startDate < todayISO) {
+    if (!formData.description?.trim()) {
+      notify('Event description is required.', 'warning');
+      return;
+    }
+
+    // Validate start date
+    if (!formData.startDate) {
+      notify('Start date is required.', 'warning');
+      return;
+    }
+
+    const today = new Date();
+    const selectedStartDate = new Date(formData.startDate);
+
+    // Check if date is valid
+    if (isNaN(selectedStartDate.getTime())) {
+      notify('Invalid start date selected.', 'warning');
+      return;
+    }
+
+    // Check if date is in the future (or today)
+    if (selectedStartDate < today.setHours(0, 0, 0, 0)) {
       notify('Start date cannot be in the past.', 'warning');
       return;
     }
-    if (formData.endDate && formData.startDate && formData.endDate < formData.startDate) {
-      notify('End date cannot be before Start date.', 'warning');
+
+    // Check if date is reasonable (not too far in the future)
+    const maxDate = new Date();
+    maxDate.setFullYear(today.getFullYear() + 1);
+    if (selectedStartDate > maxDate) {
+      notify('Start date cannot be more than 1 year in the future.', 'warning');
       return;
     }
 
+    // Validate end date if provided
+    if (formData.endDate) {
+      const selectedEndDate = new Date(formData.endDate);
+      if (isNaN(selectedEndDate.getTime())) {
+        notify('Invalid end date selected.', 'warning');
+        return;
+      }
+
+      if (selectedEndDate < selectedStartDate) {
+        notify('End date cannot be before start date.', 'warning');
+        return;
+      }
+    }
+
+    // Validate audience selection
     if (formData.audience === 'selected' && (!formData.targetEmployeeIds || formData.targetEmployeeIds.length === 0)) {
       notify('Please select at least one employee for targeted events.', 'warning');
       return;
     }
 
+    if (formData.audience === 'department' && !formData.targetDepartment) {
+      notify('Please select a department for department-based events.', 'warning');
+      return;
+    }
+
     if (editingId) {
       updateEvent(editingId, formData);
+      notify('Event updated successfully!', 'success');
     } else {
-      addEvent(formData);
+      addEvent({
+        ...formData,
+        createdAt: new Date().toISOString(),
+        participations: [],
+        updatedAt: new Date().toISOString()
+      } as AppEvent);
+      notify('Event created successfully!', 'success');
     }
 
     setIsModalOpen(false);
@@ -187,6 +628,21 @@ const EventsAdmin: React.FC = () => {
         : [...current, id];
       return { ...prev, targetEmployeeIds: next };
     });
+  };
+
+  // Handle start date change
+  const handleStartDateChange = (dateStr: string) => {
+    setFormData({
+      ...formData,
+      startDate: dateStr,
+      // Auto-set end date to same as start if not set or if it's before new start date
+      endDate: !formData.endDate || new Date(formData.endDate) < new Date(dateStr) ? dateStr : formData.endDate
+    });
+  };
+
+  // Handle end date change
+  const handleEndDateChange = (dateStr: string) => {
+    setFormData({ ...formData, endDate: dateStr });
   };
 
   return (
@@ -275,7 +731,7 @@ const EventsAdmin: React.FC = () => {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/50 shadow-sm">
                           <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">📅 Schedule</p>
-                          <p className="text-[10px] font-black text-slate-800">{evt.startDate}</p>
+                          <p className="text-[10px] font-black text-slate-800">{formatDisplayDate(evt.startDate)}</p>
                         </div>
                         <div className={`p-3 rounded-2xl border shadow-sm ${timeBadgeStyle}`}>
                           <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">⏰ Time</p>
@@ -338,7 +794,7 @@ const EventsAdmin: React.FC = () => {
                           </span>
                           <div>
                             <p className="text-sm font-black text-slate-800">{evt.title}</p>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase">{evt.startDate} • {evt.startTime}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase">{formatDisplayDate(evt.startDate)} • {evt.startTime}</p>
                           </div>
                         </div>
                       </td>
@@ -431,23 +887,48 @@ const EventsAdmin: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">📅 Start Date</label>
-              <input
-                aria-label="Start date"
-                type="date" required
-                min={todayISO}
-                className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
-                value={formData.startDate}
-                onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+              <DatePicker
+                id="startDate"
+                label="Select Start Date"
+                value={formData.startDate || todayISO}
+                onChange={handleStartDateChange}
+                minDate={todayISO}
+                required={true}
               />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">⏰ Start Time</label>
               <input
-                type="text" required
+                type="text"
+                required
                 placeholder="09:00 AM"
                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
                 value={formData.startTime}
                 onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">📅 End Date</label>
+              <DatePicker
+                id="endDate"
+                label="Select End Date"
+                value={formData.endDate || todayISO}
+                onChange={handleEndDateChange}
+                minDate={formData.startDate || todayISO}
+                required={false}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">⏰ End Time</label>
+              <input
+                type="text"
+                placeholder="10:00 AM"
+                className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold text-slate-600 shadow-inner"
+                value={formData.endTime}
+                onChange={e => setFormData({ ...formData, endTime: e.target.value })}
               />
             </div>
           </div>
@@ -496,7 +977,8 @@ const EventsAdmin: React.FC = () => {
                 <div className="relative">
                   <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
                   <input
-                    type="text" placeholder="🔍 Filter employees..."
+                    type="text"
+                    placeholder="🔍 Filter employees..."
                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none shadow-inner"
                     value={empSearch}
                     onChange={e => setEmpSearch(e.target.value)}

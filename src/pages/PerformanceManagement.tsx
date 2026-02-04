@@ -8,9 +8,11 @@ import {
   ChevronLeft, ChevronRight as ChevronRightIcon, User, Briefcase,
   X, Activity, Zap, Target as TargetIcon, Award as AwardIcon,
   MessageCircle, FileText, TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon, MinusCircle
+  TrendingDown as TrendingDownIcon, MinusCircle,
+  CheckSquare, BarChart2, FolderCheck, Users as UsersIcon
 } from 'lucide-react';
 import { useHRMS } from '../context/HRMSContext';
+import { Task } from '../types';
 
 interface PerformanceData {
   id: string;
@@ -163,7 +165,8 @@ const EmployeePerformanceModal: React.FC<{
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
                           <div
-                            className={`bg-emerald-500 h-2 rounded-full w-[${employee.kpiScore}%]`}
+                            className={`bg-emerald-500 h-2 rounded-full`}
+                            style={{ width: `${employee.kpiScore}%` }}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-900">{employee.kpiScore}%</span>
@@ -174,7 +177,8 @@ const EmployeePerformanceModal: React.FC<{
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
                           <div
-                            className={`bg-blue-500 h-2 rounded-full w-[${employee.taskCompletion}%]`}
+                            className={`bg-blue-500 h-2 rounded-full`}
+                            style={{ width: `${employee.taskCompletion}%` }}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-900">{employee.taskCompletion}%</span>
@@ -185,7 +189,8 @@ const EmployeePerformanceModal: React.FC<{
                       <div className="flex items-center gap-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
                           <div
-                            className={`bg-amber-500 h-2 rounded-full w-[${employee.qualityScore}%]`}
+                            className={`bg-amber-500 h-2 rounded-full`}
+                            style={{ width: `${employee.qualityScore}%` }}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-900">{employee.qualityScore}%</span>
@@ -197,58 +202,87 @@ const EmployeePerformanceModal: React.FC<{
 
               {/* Goals */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Current Goals</h3>
-                {employee.goals.map((goal, index) => (
-                  <div key={index} className="p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{goal.title}</h4>
-                      <span className="text-sm text-gray-500">Due: {goal.deadline}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`bg-green-500 h-2 rounded-full w-[${goal.progress}%]`}
-                        />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Current Goals</h3>
+                  <span className="text-sm text-blue-600 font-medium">{employee.goals.length} Active</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {employee.goals.map((goal, index) => (
+                    <div key={index} className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/30 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <TargetIcon className="w-4 h-4 text-blue-600" />
+                          <h4 className="font-medium text-gray-900">{goal.title}</h4>
+                        </div>
+                        <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                          Due: {goal.deadline}
+                        </span>
                       </div>
-                      <span className="text-sm font-medium text-gray-700">{goal.progress}%</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Progress</span>
+                          <span className="font-semibold text-gray-900">{goal.progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${goal.progress >= 70 ? 'bg-emerald-500' : goal.progress >= 40 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                            style={{ width: `${goal.progress}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Employee Details */}
             <div className="space-y-6">
-              <div className="p-4 border border-gray-200 rounded-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Details</h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium text-gray-900">{employee.email}</p>
+              <div className="p-5 border border-gray-200 rounded-xl bg-white">
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-5 h-5 text-gray-700" />
+                  <h3 className="text-lg font-semibold text-gray-900">Employee Details</h3>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide mb-1">Email</span>
+                    <p className="font-medium text-gray-900 truncate">{employee.email}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Join Date</p>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide mb-1">Join Date</span>
                     <p className="font-medium text-gray-900">{employee.joinDate}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Manager</p>
-                    <p className="font-medium text-gray-900">{employee.manager}</p>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide mb-1">Manager</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-3 h-3 text-blue-600" />
+                      </div>
+                      <p className="font-medium text-gray-900">{employee.manager}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Active Projects</p>
-                    <p className="font-medium text-gray-900">{employee.projects}</p>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Projects</span>
+                    <div className="flex items-center gap-2">
+                      <FolderCheck className="w-4 h-4 text-blue-600" />
+                      <p className="font-medium text-gray-900">{employee.projects} Projects</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Attendance */}
-              <div className="p-4 border border-gray-200 rounded-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance</h3>
+              <div className="p-5 border border-gray-200 rounded-xl bg-white">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-5 h-5 text-gray-700" />
+                  <h3 className="text-lg font-semibold text-gray-900">Attendance</h3>
+                </div>
                 <div className="text-center">
                   <div className="relative w-24 h-24 mx-auto mb-4">
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
                         <span className="text-3xl font-bold text-gray-900">{employee.attendance}%</span>
+                        <p className="text-xs text-gray-600 mt-1">Current Month</p>
                       </div>
                     </div>
                     <svg className="w-full h-full" viewBox="0 0 100 100">
@@ -266,17 +300,31 @@ const EmployeePerformanceModal: React.FC<{
                       />
                     </svg>
                   </div>
-                  <p className="text-sm text-gray-600">Current Month</p>
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="text-center">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full mx-auto mb-1"></div>
+                      <span className="text-xs text-gray-600">Present</span>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-2 h-2 bg-gray-300 rounded-full mx-auto mb-1"></div>
+                      <span className="text-xs text-gray-600">Absent</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Achievements */}
-              <div className="p-4 border border-gray-200 rounded-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Achievements</h3>
-                <div className="space-y-2">
+              <div className="p-5 border border-gray-200 rounded-xl bg-white">
+                <div className="flex items-center gap-2 mb-4">
+                  <AwardIcon className="w-5 h-5 text-gray-700" />
+                  <h3 className="text-lg font-semibold text-gray-900">Recent Achievements</h3>
+                </div>
+                <div className="space-y-3">
                   {employee.achievements.map((achievement, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <AwardIcon className="w-4 h-4 text-amber-500" />
+                    <div key={index} className="flex items-center gap-3 p-2 bg-gradient-to-r from-amber-50/50 to-transparent rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <AwardIcon className="w-4 h-4 text-amber-600" />
+                      </div>
                       <span className="text-sm text-gray-700">{achievement}</span>
                     </div>
                   ))}
@@ -290,7 +338,7 @@ const EmployeePerformanceModal: React.FC<{
         <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100"
+            className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors"
           >
             Close
           </button>
@@ -299,7 +347,7 @@ const EmployeePerformanceModal: React.FC<{
               onScheduleReview(employee.name);
               onClose();
             }}
-            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow"
           >
             Schedule Review
           </button>
@@ -310,7 +358,7 @@ const EmployeePerformanceModal: React.FC<{
 };
 
 const EmployeePerformanceDashboard: React.FC = () => {
-  const { employees, attendance, notify } = useHRMS();
+  const { employees, attendance, notify, tasks, customTeams, taskReviews, addTaskReview } = useHRMS();
   const [performanceDataState, setPerformanceData] = useState<PerformanceData[]>([]);
   const [departmentStats, setDepartmentStats] = useState<DepartmentStats[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
@@ -324,6 +372,52 @@ const EmployeePerformanceDashboard: React.FC = () => {
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState<boolean>(false);
   const [liveUpdates, setLiveUpdates] = useState<Array<{ message: string; time: string }>>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Task review UI state
+  const [taskTab, setTaskTab] = useState<'all' | 'team' | 'individual'>('all');
+  const [selectedTaskForReview, setSelectedTaskForReview] = useState<Task | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState<boolean>(false);
+  const [reviewEmployeeId, setReviewEmployeeId] = useState<string>('');
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>('');
+
+  // Task filters
+  const [taskFilters, setTaskFilters] = useState<{
+    status: string;
+    priority: string;
+    assigneeType: string;
+    department: string;
+    assigneeName: string;
+  }>({
+    status: 'All',
+    priority: 'All',
+    assigneeType: 'All',
+    department: 'All',
+    assigneeName: ''
+  });
+
+  // Complete list of task statuses
+  const taskStatuses = useMemo(() => [
+    'All',
+    'Pending',
+    'In Progress',
+    'On Review',
+    'Completed',
+    'Overdue',
+    'Cancelled'
+  ], []);
+
+  // Complete list of task priorities
+  const taskPriorities = useMemo(() => [
+    'All',
+    'P1',
+    'P2',
+    'P3',
+    'P4',
+    'High',
+    'Medium',
+    'Low'
+  ], []);
 
   // Convert real employees to performance data
   const loadPerformanceData = () => {
@@ -348,6 +442,15 @@ const EmployeePerformanceDashboard: React.FC = () => {
 
       // Random variation for demo
       performanceScore += (Math.random() * 0.6) - 0.3;
+
+      // Apply reviews-based adjustment (if any reviews exist for this employee)
+      const empReviews = (typeof taskReviews !== 'undefined') ? taskReviews.filter(r => r.employeeId === emp.id) : [];
+      const avgRating = empReviews.length > 0 ? (empReviews.reduce((s, r) => s + r.rating, 0) / empReviews.length) : null;
+      if (avgRating) {
+        // small positive/negative nudge based on average rating (centered at 3)
+        performanceScore += (avgRating - 3) * 0.25; // +-0.5 max influence
+      }
+
       performanceScore = Math.max(1, Math.min(5, performanceScore));
 
       // Determine status
@@ -393,7 +496,7 @@ const EmployeePerformanceDashboard: React.FC = () => {
           performanceScore >= 4.5 ? 'High Performer' : null,
           'Team Contributor'
         ].filter(Boolean) as string[],
-        feedback: [
+        feedback: empReviews.length > 0 ? empReviews.map(r => ({ date: r.date, comment: r.comment, reviewer: r.reviewer })) : [
           { date: '2024-03-15', comment: 'Good team player', reviewer: emp.reportingManager || 'Manager' },
           { date: '2024-02-28', comment: 'Meets expectations', reviewer: 'Supervisor' }
         ],
@@ -545,28 +648,127 @@ const EmployeePerformanceDashboard: React.FC = () => {
     notify(`Performance review scheduled for ${employeeName}`, 'success');
   };
 
+  // Task card status styling
+  const getTaskStatusColor = (status: string) => {
+    const statusLower = status?.toLowerCase() || '';
+    switch (statusLower) {
+      case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'in progress': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'on review': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'overdue': return 'bg-rose-50 text-rose-700 border-rose-200';
+      case 'cancelled': return 'bg-gray-50 text-gray-700 border-gray-200';
+      default: return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
+  // Task priority styling
+  const getTaskPriorityColor = (priority: string) => {
+    const priorityLower = priority?.toLowerCase() || '';
+    switch (priorityLower) {
+      case 'p1':
+      case 'high': return 'bg-rose-100 text-rose-800';
+      case 'p2':
+      case 'medium-high': return 'bg-orange-100 text-orange-800';
+      case 'p3':
+      case 'medium': return 'bg-amber-100 text-amber-800';
+      case 'p4':
+      case 'low': return 'bg-emerald-100 text-emerald-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const departmentsList = useMemo(() =>
+    Array.from(new Set((employees || []).map(e => e.department || 'Unassigned'))).sort(),
+    [employees]
+  );
+
+  const openReviewModal = (task: Task) => {
+    setSelectedTaskForReview(task);
+    if (task.assigneeType === 'employee') setReviewEmployeeId(task.assignedTo);
+    else setReviewEmployeeId('');
+    setReviewRating(5);
+    setReviewComment('');
+    setIsReviewModalOpen(true);
+  };
+
+  const closeReviewModal = () => {
+    setSelectedTaskForReview(null);
+    setIsReviewModalOpen(false);
+    setReviewEmployeeId('');
+    setReviewRating(5);
+    setReviewComment('');
+  };
+
+  const submitReview = () => {
+    if (!selectedTaskForReview) return;
+    if (!reviewEmployeeId) {
+      notify('Please select an employee to review.', 'warning');
+      return;
+    }
+
+    addTaskReview({
+      taskId: selectedTaskForReview.id,
+      employeeId: reviewEmployeeId,
+      reviewer: 'Admin',
+      rating: reviewRating,
+      comment: reviewComment,
+      date: new Date().toISOString().split('T')[0]
+    });
+
+    // refresh performance data to reflect changes
+    loadPerformanceData();
+    closeReviewModal();
+  };
+
   const handleRefreshData = () => {
     loadPerformanceData();
     notify('Performance data refreshed', 'info');
   };
 
+  // Task filter helpers
+  const visibleTasks = useMemo(() => {
+    return (tasks || []).filter(t => {
+      // tab filter
+      if (taskTab === 'team' && t.assigneeType !== 'team') return false;
+      if (taskTab === 'individual' && t.assigneeType !== 'employee') return false;
+
+      // status filter
+      if (taskFilters.status !== 'All' && (t.status || '').toLowerCase() !== taskFilters.status.toLowerCase()) return false;
+
+      // priority filter
+      if (taskFilters.priority !== 'All' && (t.priority || '').toLowerCase() !== taskFilters.priority.toLowerCase()) return false;
+
+      // assignee type filter
+      if (taskFilters.assigneeType !== 'All' && t.assigneeType !== taskFilters.assigneeType) return false;
+
+      // department filter
+      if (taskFilters.department !== 'All' && t.assignedTo !== taskFilters.department) return false;
+
+      // assignee name filter
+      if (taskFilters.assigneeName && !(t.assigneeName || '').toLowerCase().includes(taskFilters.assigneeName.toLowerCase())) return false;
+
+      return true;
+    });
+  }, [tasks, taskTab, taskFilters]);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6 font-sans">
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Employee Performance Dashboard</h1>
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-2">
               <p className="text-gray-600">{currentDate}</p>
-              <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+              <div className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
                 <Zap className="w-3 h-3" />
                 <span>Live Data • {performanceDataState.length} Employees • Updated: {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
               <input
@@ -574,19 +776,19 @@ const EmployeePerformanceDashboard: React.FC = () => {
                 placeholder="Search employees..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm w-48 md:w-56"
+                className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm w-full md:w-64 shadow-sm"
               />
             </div>
 
             <button
               onClick={handleRefreshData}
-              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm bg-white"
               title="Refresh data"
             >
               <Activity className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
             </button>
 
-            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50" title="Download data">
+            <button className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm bg-white" title="Download data">
               <Download className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
             </button>
           </div>
@@ -594,16 +796,17 @@ const EmployeePerformanceDashboard: React.FC = () => {
 
         {/* Live Updates */}
         {liveUpdates.length > 0 && (
-          <div className="mb-4 p-3 bg-white border border-gray-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="mb-4 p-4 bg-gradient-to-r from-white to-gray-50/50 border border-gray-200 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-gray-700">Live Updates</span>
+              <span className="text-sm font-semibold text-gray-700">Live Updates</span>
             </div>
-            <div className="flex items-center gap-4 overflow-x-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {liveUpdates.map((update, index) => (
-                <div key={index} className="flex items-center gap-2 whitespace-nowrap">
-                  <span className="text-xs text-gray-500">{update.time}</span>
-                  <span className="text-xs text-gray-700">{update.message}</span>
+                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                  <Clock className="w-3 h-3 text-gray-400" />
+                  <span className="text-xs font-medium text-gray-500">{update.time}</span>
+                  <span className="text-xs text-gray-700 ml-2">{update.message}</span>
                 </div>
               ))}
             </div>
@@ -613,51 +816,272 @@ const EmployeePerformanceDashboard: React.FC = () => {
 
       {/* Main Content */}
       <div className="space-y-6">
-        {/* Total Employees */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
+        {/* Tasks Overview & Reviews (moved to top) */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart2 className="w-5 h-5 text-blue-600" />
+                <h2 className="text-xl font-bold text-gray-900">Tasks Overview</h2>
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Total Employees</h2>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{totalEmployees}</p>
+              <p className="text-sm text-gray-500">Monitor and review all tasks with comprehensive analytics</p>
+            </div>
+
+            <div className="flex items-center gap-3 mt-4 md:mt-0">
+              <div className="flex bg-gray-50 p-1 rounded-xl border">
+                {['all', 'team', 'individual'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setTaskTab(tab as any)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${taskTab === tab ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+                  >{tab === 'all' ? 'All Tasks' : tab === 'team' ? 'Team Tasks' : 'Individual Tasks'}</button>
+                ))}
+              </div>
+              <button
+                onClick={handleRefreshData}
+                className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* All Tasks Card */}
+            <div
+              className="p-5 rounded-xl border border-gray-200 flex items-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all duration-200 shadow-sm"
+              onClick={() => setTaskTab('all')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <CheckSquare className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">All Tasks</p>
+                  <p className="text-2xl font-bold text-gray-900">{(tasks || []).length}</p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-6">
+            {/* Team Tasks Card */}
+            <div
+              className="p-5 rounded-xl border border-gray-200 flex items-center cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition-all duration-200 shadow-sm"
+              onClick={() => setTaskTab('team')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <UsersIcon className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Team Tasks</p>
+                  <p className="text-2xl font-bold text-gray-900">{(tasks || []).filter(t => t.assigneeType === 'team').length}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Individual Tasks Card */}
+            <div
+              className="p-5 rounded-xl border border-gray-200 flex items-center cursor-pointer hover:border-amber-300 hover:bg-amber-50/30 transition-all duration-200 shadow-sm"
+              onClick={() => setTaskTab('individual')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <User className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Individual Tasks</p>
+                  <p className="text-2xl font-bold text-gray-900">{(tasks || []).filter(t => t.assigneeType === 'employee').length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Task Filters */}
+          <div className="mb-4 mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Status Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 mr-2">Status</label>
+                <select
+                  value={taskFilters.status}
+                  onChange={(e) => setTaskFilters(f => ({ ...f, status: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="On Review">On Review</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Overdue">Overdue</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              {/* Priority Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 mr-2">Priority</label>
+                <select
+                  value={taskFilters.priority}
+                  onChange={(e) => setTaskFilters(f => ({ ...f, priority: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="All">All Priorities</option>
+                  <option value="P1">P1 - Critical</option>
+                  <option value="P2">P2 - High</option>
+                  <option value="P3">P3 - Medium</option>
+                  <option value="P4">P4 - Low</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              {/* Assignee Type Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 mr-2">Assignee</label>
+                <select
+                  value={taskFilters.assigneeType}
+                  onChange={(e) => setTaskFilters(f => ({ ...f, assigneeType: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="All">All Assignees</option>
+                  <option value="employee">Employee</option>
+                  <option value="team">Team</option>
+                  <option value="department">Department</option>
+                </select>
+              </div>
+
+              {/* Department Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 mr-2">Dept</label>
+                <select
+                  value={taskFilters.department}
+                  onChange={(e) => setTaskFilters(f => ({ ...f, department: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="All">All Departments</option>
+                  {departmentsList.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+
+              {/* Assignee Name Search */}
+              <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+                <input
+                  value={taskFilters.assigneeName}
+                  onChange={(e) => setTaskFilters(f => ({ ...f, assigneeName: e.target.value }))}
+                  placeholder="Search assignee..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                />
+              </div>
+
+              {/* Clear Filters Button */}
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setTaskFilters({ status: 'All', priority: 'All', assigneeType: 'All', department: 'All', assigneeName: '' })}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:bg-gray-50"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Task list (filtered by selected tab) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {visibleTasks.map(task => (
+              <div key={task.id} className="group p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-200 bg-white">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                        {task.assigneeType}
+                      </span>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getTaskPriorityColor(task.priority)}`}>
+                        {task.priority} Priority
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-1">{task.title}</h3>
+                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                      <User className="w-3 h-3 text-blue-600" />
+                    </div>
+                    <span className="text-xs font-medium text-gray-700">{task.assigneeName}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500">Due Date</div>
+                    <div className="text-sm font-medium text-gray-900">{task.dueDate}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full border ${getTaskStatusColor(task.status)}`}>
+                      {task.status}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => openReviewModal(task)}
+                    className="px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600 text-xs font-medium rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-200 shadow-sm"
+                  >
+                    Add Review
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Total Employees */}
+        <div className="bg-gradient-to-r from-white to-gray-50 rounded-xl border border-gray-200 shadow-lg p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                <Users className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Total Employees</h2>
+                <p className="text-4xl font-bold text-gray-900 mt-1">{totalEmployees}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Avg Performance</p>
-                <div className="flex items-center justify-center gap-1 mt-1">
-                  <span className="text-xl font-bold text-gray-900">{avgPerformance.toFixed(1)}</span>
+                <p className="text-sm text-gray-600 mb-2">Avg Performance</p>
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  <span className="text-2xl font-bold text-gray-900">{avgPerformance.toFixed(1)}</span>
                   <span className="text-gray-500">/ 5</span>
                 </div>
-                <div className="mt-1">
+                <div className="flex justify-center">
                   {renderStars(avgPerformance)}
                 </div>
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600">Attendance</p>
-                <div className="mt-1">
-                  <span className="text-xl font-bold text-gray-900">{avgAttendance.toFixed(1)}%</span>
+                <p className="text-sm text-gray-600 mb-2">Attendance</p>
+                <div className="mb-2">
+                  <span className="text-2xl font-bold text-gray-900">{avgAttendance.toFixed(1)}%</span>
                 </div>
-                <div className="mt-1">
-                  <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                <div className="flex justify-center">
+                  <div className="w-24 bg-gray-200 rounded-full h-2">
                     <div
-                      className={`bg-emerald-500 h-1.5 rounded-full w-[${avgAttendance}%]`}
+                      className={`bg-emerald-500 h-2 rounded-full`}
+                      style={{ width: `${avgAttendance}%` }}
                     />
                   </div>
                 </div>
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-gray-600">Low Performers</p>
-                <div className="mt-1">
-                  <span className="text-xl font-bold text-gray-900">{lowPerformers}</span>
+                <p className="text-sm text-gray-600 mb-2">Low Performers</p>
+                <div className="mb-2">
+                  <span className="text-2xl font-bold text-gray-900">{lowPerformers}</span>
                 </div>
-                <p className="text-xs text-rose-600 font-medium mt-0.5">Needs attention</p>
+                <p className="text-xs text-rose-600 font-medium bg-rose-50 px-2 py-1 rounded-full">Needs attention</p>
               </div>
             </div>
           </div>
@@ -666,68 +1090,91 @@ const EmployeePerformanceDashboard: React.FC = () => {
         {/* Department Performance & KPI */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Department Performance */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Department-wise Performance</h2>
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                title="Select department"
-              >
-                <option value="All">All Departments</option>
-                {departmentStats.map(dept => (
-                  <option key={dept.name} value={dept.name}>{dept.name}</option>
-                ))}
-              </select>
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Department-wise Performance</h2>
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm appearance-none shadow-sm"
+                  title="Select department"
+                >
+                  <option value="All">All Departments</option>
+                  {departmentStats.map(dept => (
+                    <option key={dept.name} value={dept.name}>{dept.name}</option>
+                  ))}
+                </select>
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Department</th>
-                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Employees</th>
-                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Avg KPI</th>
-                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Tasks</th>
-                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Attendance</th>
-                    <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Rating</th>
+                    <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Department</th>
+                    <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Employees</th>
+                    <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Avg KPI</th>
+                    <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Tasks</th>
+                    <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Attendance</th>
+                    <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Rating</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {departmentStats.map((dept) => (
-                    <tr key={dept.name} className="hover:bg-gray-50">
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded flex items-center justify-center ${dept.name === 'Sales' ? 'bg-blue-100 text-blue-600' :
-                            dept.name === 'Development' ? 'bg-emerald-100 text-emerald-600' :
-                              dept.name === 'Support' ? 'bg-amber-100 text-amber-600' :
-                                dept.name === 'Marketing' ? 'bg-pink-100 text-pink-600' :
-                                  'bg-purple-100 text-purple-600'
+                    <tr key={dept.name} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm ${dept.name === 'Sales' ? 'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600' :
+                            dept.name === 'Development' ? 'bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-600' :
+                              dept.name === 'Support' ? 'bg-gradient-to-br from-amber-100 to-amber-200 text-amber-600' :
+                                dept.name === 'Marketing' ? 'bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600' :
+                                  'bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600'
                             }`}>
-                            <span className="text-xs font-bold">{dept.name.charAt(0)}</span>
+                            <span className="text-sm font-bold">{dept.name.charAt(0)}</span>
                           </div>
                           <span className="text-sm font-medium text-gray-900">{dept.name}</span>
                         </div>
                       </td>
-                      <td className="p-3">
-                        <span className="font-medium text-gray-900">{dept.employees}</span>
-                      </td>
-                      <td className="p-3">
-                        <div className="w-20 bg-gray-200 rounded-full h-1.5">
-                          <div
-                            className={`bg-blue-500 h-1.5 rounded-full w-[${dept.avgKPIScore}%]`}
-                          />
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">{dept.employees}</span>
                         </div>
-                        <span className="text-xs text-gray-700 mt-1">{dept.avgKPIScore}%</span>
                       </td>
-                      <td className="p-3">
-                        {renderStars(dept.tasksCompleted / Math.max(dept.totalTasks, 1) * 5)}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full bg-blue-500`}
+                              style={{ width: `${dept.avgKPIScore}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-gray-900 min-w-[40px]">{dept.avgKPIScore}%</span>
+                        </div>
                       </td>
-                      <td className="p-3">
-                        <span className="font-medium text-gray-900">{dept.attendance}%</span>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-900 font-medium">{dept.tasksCompleted}/{dept.totalTasks}</span>
+                          <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full bg-emerald-500`}
+                              style={{ width: `${(dept.tasksCompleted / Math.max(dept.totalTasks, 1)) * 100}%` }}
+                            />
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-3">
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">{dept.attendance}%</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
                         {renderStars(dept.overallRating / 20)}
                       </td>
                     </tr>
@@ -738,24 +1185,28 @@ const EmployeePerformanceDashboard: React.FC = () => {
           </div>
 
           {/* KPI Categories */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">KPI Category</h2>
-            <div className="space-y-4">
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-200 shadow-lg p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Target className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">KPI Categories</h2>
+            </div>
+            <div className="space-y-6">
               {[
-                { label: 'KPI Score', value: 80, color: 'bg-blue-500' },
-                { label: 'Task Completion', value: 92, color: 'bg-emerald-500' },
-                { label: 'Quality', value: 88, color: 'bg-amber-500' },
-                { label: 'Attendance', value: 95, color: 'bg-purple-500' },
-                { label: 'Teamwork', value: 85, color: 'bg-pink-500' }
+                { label: 'KPI Score', value: 80, color: 'bg-gradient-to-r from-blue-500 to-blue-600' },
+                { label: 'Task Completion', value: 92, color: 'bg-gradient-to-r from-emerald-500 to-emerald-600' },
+                { label: 'Quality', value: 88, color: 'bg-gradient-to-r from-amber-500 to-amber-600' },
+                { label: 'Attendance', value: 95, color: 'bg-gradient-to-r from-purple-500 to-purple-600' },
+                { label: 'Teamwork', value: 85, color: 'bg-gradient-to-r from-pink-500 to-pink-600' }
               ].map((kpi, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-700">{kpi.label}</span>
-                    <span className="text-sm font-medium text-gray-900">{kpi.value}%</span>
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">{kpi.label}</span>
+                    <span className="text-sm font-bold text-gray-900">{kpi.value}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                     <div
-                      className={`h-1.5 rounded-full ${kpi.color} w-[${kpi.value}%]`}
+                      className={`h-2.5 rounded-full ${kpi.color} transition-all duration-500 ease-out`}
+                      style={{ width: `${kpi.value}%` }}
                     />
                   </div>
                 </div>
@@ -767,43 +1218,48 @@ const EmployeePerformanceDashboard: React.FC = () => {
         {/* Top & Low Performers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Performers */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Top Performers</h2>
-              <Trophy className="w-5 h-5 text-amber-500" />
+          <div className="bg-gradient-to-br from-white to-emerald-50/30 rounded-xl border border-gray-200 shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <h2 className="text-lg font-semibold text-gray-900">Top Performers</h2>
+              </div>
+              <span className="text-xs font-medium px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                {topPerformers.length} Employees
+              </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {topPerformers.map((emp, index) => (
                 <div
                   key={emp.id}
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-white rounded-lg border border-emerald-100 hover:border-emerald-200 cursor-pointer"
+                  className="group flex items-center justify-between p-4 bg-gradient-to-r from-white to-emerald-50 rounded-xl border border-emerald-100 hover:border-emerald-300 hover:shadow-sm cursor-pointer transition-all duration-200"
                   onClick={() => handleViewEmployee(emp)}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                        <span className="text-base font-bold text-emerald-600">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                        <span className="text-lg font-bold text-white">
                           {emp.name.charAt(0)}
                         </span>
                       </div>
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold text-white">{index + 1}</span>
+                      <div className="absolute -top-2 -right-2 w-7 h-7 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center shadow-sm">
+                        <span className="text-xs font-bold text-white">#{index + 1}</span>
                       </div>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
-                      <p className="text-xs text-gray-600">{emp.role}</p>
+                      <p className="font-semibold text-gray-900 text-sm">{emp.name}</p>
+                      <p className="text-xs text-gray-600">{emp.role} • {emp.department}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 justify-end">
-                      <span className="text-lg font-bold text-gray-900">{emp.performanceScore.toFixed(1)}</span>
-                      <Star className="w-4 h-4 text-amber-500 fill-current" />
+                    <div className="flex items-center gap-2 justify-end mb-1">
+                      <span className="text-xl font-bold text-gray-900">{emp.performanceScore.toFixed(1)}</span>
+                      <Star className="w-5 h-5 text-amber-500 fill-current" />
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-2 justify-end">
                       {getTrendIcon(emp.trend)}
-                      <p className="text-xs text-emerald-600 font-medium">Exceeding</p>
+                      <span className="text-xs font-medium text-emerald-700">Exceeding Expectations</span>
                     </div>
                   </div>
                 </div>
@@ -812,38 +1268,43 @@ const EmployeePerformanceDashboard: React.FC = () => {
           </div>
 
           {/* Low Performers */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Low Performers</h2>
-              <AlertTriangle className="w-5 h-5 text-rose-500" />
+          <div className="bg-gradient-to-br from-white to-rose-50/30 rounded-xl border border-gray-200 shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-rose-500" />
+                <h2 className="text-lg font-semibold text-gray-900">Low Performers</h2>
+              </div>
+              <span className="text-xs font-medium px-3 py-1 bg-rose-100 text-rose-800 rounded-full">
+                {lowPerformersList.length} Employees
+              </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {lowPerformersList.map((emp) => (
                 <div
                   key={emp.id}
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-rose-50 to-white rounded-lg border border-rose-100 hover:border-rose-200 cursor-pointer"
+                  className="group flex items-center justify-between p-4 bg-gradient-to-r from-white to-rose-50 rounded-xl border border-rose-100 hover:border-rose-300 hover:shadow-sm cursor-pointer transition-all duration-200"
                   onClick={() => handleViewEmployee(emp)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
-                      <span className="text-base font-bold text-rose-600">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-sm">
+                      <span className="text-lg font-bold text-white">
                         {emp.name.charAt(0)}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
-                      <p className="text-xs text-gray-600">{emp.role}</p>
+                      <p className="font-semibold text-gray-900 text-sm">{emp.name}</p>
+                      <p className="text-xs text-gray-600">{emp.role} • {emp.department}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 justify-end">
-                      <span className="text-lg font-bold text-gray-900">{emp.performanceScore.toFixed(1)}</span>
-                      <Star className="w-4 h-4 text-gray-300" />
+                    <div className="flex items-center gap-2 justify-end mb-1">
+                      <span className="text-xl font-bold text-gray-900">{emp.performanceScore.toFixed(1)}</span>
+                      <Star className="w-5 h-5 text-gray-300" />
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-2 justify-end">
                       {getTrendIcon(emp.trend)}
-                      <p className="text-xs text-rose-600 font-medium">Needs Improvement</p>
+                      <span className="text-xs font-medium text-rose-700">Needs Improvement</span>
                     </div>
                   </div>
                 </div>
@@ -853,60 +1314,81 @@ const EmployeePerformanceDashboard: React.FC = () => {
         </div>
 
         {/* Employee List Table */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Employee Performance List</h2>
-            <span className="text-sm text-gray-600">{filteredByDepartment.length} employees</span>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Employee Performance List</h2>
+            </div>
+            <span className="text-sm font-medium px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+              {filteredByDepartment.length} employees
+            </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Employee</th>
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Department</th>
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Performance</th>
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">KPI</th>
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Attendance</th>
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
-                  <th className="text-left p-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Employee</th>
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Department</th>
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Performance</th>
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">KPI</th>
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Attendance</th>
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="text-left p-4 text-xs font-semibold text-gray-600 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredByDepartment.slice(0, 10).map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50">
-                    <td className="p-3">
+                  <tr key={emp.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center shadow-sm">
                           <span className="text-sm font-bold text-blue-600">{emp.name.charAt(0)}</span>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900 text-sm">{emp.name}</p>
+                          <p className="font-semibold text-gray-900 text-sm">{emp.name}</p>
                           <p className="text-xs text-gray-600">{emp.role}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-3">
-                      <span className="text-sm text-gray-700">{emp.department}</span>
+                    <td className="p-4">
+                      <span className="text-sm font-medium text-gray-700">{emp.department}</span>
                     </td>
-                    <td className="p-3">
-                      {renderStars(emp.performanceScore)}
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        {renderStars(emp.performanceScore)}
+                        <span className="text-xs text-gray-500 font-medium">
+                          ({emp.performanceScore.toFixed(1)})
+                        </span>
+                      </div>
                     </td>
-                    <td className="p-3">
-                      <span className="font-medium text-gray-900">{emp.kpiScore}%</span>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full ${emp.kpiScore >= 80 ? 'bg-emerald-500' : emp.kpiScore >= 60 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                            style={{ width: `${emp.kpiScore}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{emp.kpiScore}%</span>
+                      </div>
                     </td>
-                    <td className="p-3">
-                      <span className="font-medium text-gray-900">{emp.attendance}%</span>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-900">{emp.attendance}%</span>
+                      </div>
                     </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPerformanceColor(emp.performanceScore)}`}>
+                    <td className="p-4">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-medium border ${getPerformanceColor(emp.performanceScore)}`}>
                         {emp.status.replace('-', ' ')}
                       </span>
                     </td>
-                    <td className="p-3">
+                    <td className="p-4">
                       <button
                         onClick={() => handleViewEmployee(emp)}
-                        className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded hover:bg-blue-100"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600 text-sm font-medium rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-200 shadow-sm"
                       >
                         View Details
                       </button>
@@ -918,6 +1400,96 @@ const EmployeePerformanceDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Review Modal */}
+      {isReviewModalOpen && selectedTaskForReview && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+              <h3 className="text-xl font-bold text-gray-900">Add Review for Task</h3>
+              <button
+                onClick={closeReviewModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-sm font-semibold text-blue-900 mb-1">Task Details</p>
+                <p className="font-bold text-gray-900">{selectedTaskForReview.title}</p>
+                <p className="text-sm text-gray-600 mt-1">{selectedTaskForReview.description}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Review For</label>
+                <select
+                  value={reviewEmployeeId}
+                  onChange={(e) => setReviewEmployeeId(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Select employee</option>
+                  {selectedTaskForReview.assigneeType === 'employee' && (
+                    <option value={selectedTaskForReview.assignedTo}>{selectedTaskForReview.assigneeName}</option>
+                  )}
+                  {selectedTaskForReview.assigneeType === 'team' && (
+                    customTeams.find(t => t.id === selectedTaskForReview.assignedTo)?.memberIds.map(mid => {
+                      const emp = employees.find(e => e.id === mid);
+                      return emp ? <option key={mid} value={emp.id}>{emp.fullName}</option> : null;
+                    })
+                  )}
+                  {selectedTaskForReview.assigneeType === 'department' && (
+                    employees.filter(e => e.department === selectedTaskForReview.assignedTo).map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.fullName}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Rating</label>
+                <select
+                  value={reviewRating}
+                  onChange={e => setReviewRating(Number(e.target.value))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  {[5, 4, 3, 2, 1].map(n => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? 'Star' : 'Stars'} - {n >= 4 ? 'Excellent' : n >= 3 ? 'Good' : n >= 2 ? 'Fair' : 'Poor'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Comments</label>
+                <textarea
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  placeholder="Provide constructive feedback about task execution, quality, and areas for improvement..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  onClick={closeReviewModal}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitReview}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow"
+                >
+                  Submit Review
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Employee Performance Modal */}
       {isEmployeeModalOpen && selectedEmployee && (
